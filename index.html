@@ -301,7 +301,7 @@ const STEPS = [
   center: { x: 180, y: 280, r: 120 }, controls: ["play"],
   eli5: `<p>In school, sine, cosine and tangent usually arrive as three separate squiggles to memorize. They come with a triangle rule (SOH CAH TOA), a table of special angles, and a strange unit called the radian.</p>
          <p><b>Watch the spinning dot.</b> The marker on all three graphs is reading the same dot on the same circle. By the last step you will have seen every one of those things come out of this one circle.</p>`,
-  math: `Three graphs, one input: y = <span class="c-sin">sin θ</span>, y = <span class="c-cos">cos θ</span>, y = <span class="c-tan">tan θ</span>`,
+  math: `One input angle θ, three outputs: <span class="c-sin">sin θ</span>, <span class="c-cos">cos θ</span>, and <span class="c-tan">tan θ</span>, each shown on its own graph.`,
   hint: "Press Next (or the right arrow key) to build it from nothing.",
   draw(S, p) {
     const c = { x: 180, y: 280 }, R = 120, th = S.theta;
