@@ -63,6 +63,9 @@ To jump directly to a step, add `#step-N` to the URL, for example `index.html#st
 
 ## Departures from the source video
 
+<details>
+<summary>Show departures</summary>
+
 In a few places the video is imprecise or leaves gaps. These are deliberately handled differently here:
 
 - **Signed values (step 5):** The video calls cosine a "distance" even though it goes negative. Here, sine and cosine are presented as signed coordinates.
@@ -71,6 +74,8 @@ In a few places the video is imprecise or leaves gaps. These are deliberately ha
 - **Scoped real-world claim (step 12):** The video says "anything that swings back and forth" follows a sine wave. Here, the claim is limited to smooth, steady oscillations, with a note that complex signals are sums of sine waves.
 - **Tangent in every quadrant (step 13):** The video's construction only works in the first quadrant. Here, the radius is extended backward through the center when it points left, and the undefined values are marked.
 - **Scope (step 14):** The video claims "all of trigonometry". Here, the closing step names topics the picture does not directly cover: the law of cosines, inverse functions, and angle-addition formulas.
+
+</details>
 
 ## Technical notes
 
