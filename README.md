@@ -20,15 +20,6 @@ Step 13 shows tangent as the height where the radius meets a vertical touching l
 
 ![Step 13: the radius at 132 degrees extended backward through the center to meet the tangent line, with the tangent graph and a readout showing tan θ = -1.12](screenshots/step-13-tangent.png)
 
-## Files
-
-| File | Purpose |
-|------|---------|
-| `index.html` | The complete explainer: HTML, CSS, and JavaScript in one file |
-| `README.md` | This file |
-| `LICENSE` | MIT License |
-| `screenshots/` | PNG screenshots used in this README (headless Chrome, light mode, 2x) |
-
 ## Usage
 
 Open `index.html` in any modern browser. It has no dependencies, needs no build step or server, and works offline.
@@ -48,6 +39,9 @@ To jump directly to a step, add `#step-N` to the URL, for example `index.html#st
 
 ## The 14 steps
 
+<details>
+<summary>Show steps</summary>
+
 | # | Title | Idea |
 |---|-------|------|
 | 1 | Three things... or one? | Three separate graphs all driven by the same spinning dot |
@@ -65,9 +59,11 @@ To jump directly to a step, add `#step-N` to the URL, for example `index.html#st
 | 13 | Tangent: where the stick hits a touching line | tan θ = sin θ / cos θ in all four quadrants, undefined at 90° and 270° |
 | 14 | All of it, in one picture | The full composite, plus a note on what it does not cover |
 
+</details>
+
 ## Departures from the source video
 
-These gaps came up in the analysis of the video (`../All_of_Trigonometry_Is_One_Spinning_Circle.md`) and are deliberately handled differently here:
+In a few places the video is imprecise or leaves gaps. These are deliberately handled differently here:
 
 - **Signed values (step 5):** The video calls cosine a "distance" even though it goes negative. Here, sine and cosine are presented as signed coordinates.
 - **Special angles (step 11):** The video mentions a "table of angles" but never explains it. Here, the values are derived using equilateral triangles for 30° and 60°, and Pythagoras for 45°.
@@ -78,6 +74,9 @@ These gaps came up in the analysis of the video (`../All_of_Trigonometry_Is_One_
 
 ## Technical notes
 
+<details>
+<summary>Show technical notes</summary>
+
 - Vanilla JavaScript and inline SVG only; no libraries, CDNs, or network requests.
 - Each frame is redrawn from a small state object (angle, slider values, animation progress). Every step defines its own `draw` and `readout` functions in the `STEPS` array.
 - Light and dark themes follow the operating system's `prefers-color-scheme` setting.
@@ -85,7 +84,12 @@ These gaps came up in the analysis of the video (`../All_of_Trigonometry_Is_One_
 - Layout stacks into a single column below 920px width.
 - Color code used throughout: orange = radius, blue = sine, green = cosine, purple = tangent, gold = angle.
 
+</details>
+
 ## Verification performed
+
+<details>
+<summary>Show verification details</summary>
 
 - Every step's draw and readout functions were run headlessly in Node across 13 angles (including exactly 90° and all four quadrants), 8 animation progress points, and varied slider values: 4,368 renders, with no exceptions and no `NaN`, `Infinity`, or `undefined` values in the SVG output.
 - Every step was screenshotted in headless Chrome in light mode, and step 13 also in dark mode. The finished states were checked using a test copy that skips the intro animations.
@@ -96,3 +100,5 @@ These gaps came up in the analysis of the video (`../All_of_Trigonometry_Is_One_
   - Space plays and pauses only on steps that have a Play button.
   - Up / Down turn the radius, respect each step's angle limits, and pause the spin.
 - The diagram's screen-reader slider attributes (role, range, and current angle) were checked on steps with and without a draggable radius.
+
+</details>
