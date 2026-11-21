@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One Spinning Circle: Trigonometry Step by Step</title>
+<!--
+  One Spinning Circle: a self-contained, offline ELI5 explainer that builds trigonometry
+  from a single rotating radius. Each of the 14 steps animates one idea (sine, cosine,
+  SOH CAH TOA, the Pythagorean identity, radians, the waves, tangent) and most let you
+  drag the radius or adjust sliders. No external libraries; vanilla JavaScript and SVG.
+-->
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f6f4ef; --surface:#ffffff; --ink:#1c2230; --muted:#5b6474; --line:#d8d3c8; --faint:#ebe7de;
+  --disk:#eef0f6; --edge:#4a5568; --rad:#d97706; --sin:#2563eb; --cos:#0f9a6a; --tan:#8b45d6;
+  --ang:#eab308; --tri:rgba(234,179,8,.22); --hl:rgba(217,119,6,.12); --onaccent:#1c2230;
+  --cos-t:#0b7a54; --rad-t:#b45309;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --bg:#10141b; --surface:#171d27; --ink:#e6e9ef; --muted:#9aa3b2; --line:#2c3443; --faint:#222a37;
+    --disk:#1b2230; --edge:#a3adbf; --rad:#f59e0b; --sin:#6b9bff; --cos:#34c48f; --tan:#b48cff;
+    --ang:#facc15; --tri:rgba(250,204,21,.15); --hl:rgba(245,158,11,.14); --onaccent:#10141b;
+    --cos-t:#34c48f; --rad-t:#f59e0b;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1340px;margin:0 auto;padding:16px clamp(16px,3vw,32px) 32px}
+header{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;margin-bottom:12px}
+header h1{font-size:1.35rem;margin:0;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);font-size:.95rem}
+.attrib{font-size:.9rem;color:var(--sin);text-decoration:none}
+.attrib:hover{text-decoration:underline}
+.attrib:focus-visible{outline:2px solid var(--sin);outline-offset:2px;border-radius:3px}
+.layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:20px;align-items:start}
+@media (max-width:920px){.layout{grid-template-columns:1fr}}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px}
+svg#scene{width:100%;height:auto;display:block;touch-action:none;-webkit-user-select:none;user-select:none}
+svg#scene:focus-visible{outline:2px solid var(--sin);outline-offset:2px;border-radius:8px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:10px 6px 4px;border-top:1px solid var(--faint);margin-top:6px;min-height:52px}
+.btn{font:inherit;font-size:.92rem;padding:7px 14px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.on{background:var(--rad);color:var(--onaccent);border-color:var(--rad)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible,input:focus-visible,.dot:focus-visible{outline:2px solid var(--sin);outline-offset:2px}
+.sl{display:flex;flex-direction:column;gap:2px;font-size:.85rem;color:var(--muted);flex:1 1 150px;max-width:240px}
+.sl output{color:var(--ink);font-variant-numeric:tabular-nums;margin-left:4px}
+.sl input{width:100%;accent-color:var(--rad)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.count{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.panel h2{margin:4px 0 10px;font-size:1.3rem;line-height:1.25}
+.eli5 p{margin:0 0 10px}
+.eli5 ul{margin:0 0 10px;padding-left:20px}
+.mathbox{margin:12px 0;padding:10px 12px;border-left:3px solid var(--rad);background:var(--bg);border-radius:0 8px 8px 0;font-size:.95rem}
+.mathbox .k,.readout .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px}
+.readout{font-variant-numeric:tabular-nums;font-size:.95rem}
+.readout .row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--faint);padding:3px 0}
+.readout .note{color:var(--muted);font-size:.88rem;margin-top:6px}
+.hint{color:var(--muted);font-size:.88rem;margin-top:12px}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.15;margin:0 3px;font-size:.92em}
+.frac>span:last-child{border-top:1.5px solid currentColor;padding-top:1px}
+.c-sin{color:var(--sin)} .c-cos{color:var(--cos-t)} .c-tan{color:var(--tan)} .c-rad{color:var(--rad-t)}
+nav.steps{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
+.dots{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:center}
+.dot{width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:inherit;font-size:.75rem;cursor:pointer;padding:0}
+.dot.done{border-color:var(--muted);color:var(--ink)}
+.dot.cur{background:var(--rad);border-color:var(--rad);color:var(--onaccent)}
+.kbd{font-size:.8rem;color:var(--muted)}
+/* SVG */
+svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:var(--ink)}
+.axis{stroke:var(--line);stroke-width:1.5}
+.edge{fill:var(--disk);stroke:var(--edge);stroke-width:3}
+.disk{fill:var(--disk)}
+.edgeline{fill:none;stroke:var(--edge);stroke-width:3}
+.tape{stroke:var(--edge);stroke-width:3}
+.tick{stroke:var(--muted);stroke-width:1.5;fill:none}
+.rad{stroke:var(--rad);stroke-width:5;stroke-linecap:round}
+.hub{fill:var(--rad)}
+.tip{fill:var(--ink);stroke:var(--surface);stroke-width:2}
+.halo{fill:var(--rad);opacity:.18}
+.ring{fill:none;stroke:var(--rad);stroke-width:2;opacity:.6}
+.wedge{fill:var(--ang);opacity:.55}
+.tri{fill:var(--tri)}
+.hl{fill:var(--hl)}
+.sinl{stroke:var(--sin);stroke-width:4.5;stroke-linecap:round}
+.cosl{stroke:var(--cos);stroke-width:4.5;stroke-linecap:round}
+.tanl{stroke:var(--tan);stroke-width:5;stroke-linecap:round}
+.tanline{stroke:var(--tan);stroke-width:2;opacity:.55}
+.sinc{fill:none;stroke:var(--sin);stroke-width:3.5;stroke-linejoin:round}
+.cosc{fill:none;stroke:var(--cos);stroke-width:3.5;stroke-linejoin:round}
+.tanc{fill:none;stroke:var(--tan);stroke-width:3.5;stroke-linejoin:round}
+.faintc{opacity:.2}
+.dash{stroke-dasharray:7 6}
+.proj{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 5;fill:none}
+.cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 4}
+.asym{stroke:var(--tan);stroke-width:1.2;stroke-dasharray:5 6;opacity:.6}
+.arcband{fill:none;stroke:var(--rad);stroke-width:7;stroke-linecap:round}
+.arcthin{fill:none;stroke:var(--rad);stroke-width:5;stroke-linecap:round;opacity:.75}
+.sq-sin{fill:var(--sin);fill-opacity:.16;stroke:var(--sin);stroke-width:2}
+.sq-cos{fill:var(--cos);fill-opacity:.16;stroke:var(--cos);stroke-width:2}
+.sq-one{fill:var(--rad);fill-opacity:.14;stroke:var(--rad);stroke-width:2}
+.bar-sin{fill:var(--sin)} .bar-cos{fill:var(--cos)}
+.mk-sin{fill:var(--sin)} .mk-cos{fill:var(--cos)} .mk-tan{fill:var(--tan)} .mk-rad{fill:var(--rad)}
+.startdot{fill:none;stroke:var(--muted);stroke-width:2;stroke-dasharray:3 3}
+.lbl{font-size:22px}
+.small{font-size:16px;fill:var(--muted)}
+.big{font-size:30px;font-weight:600}
+svg .t-sin{fill:var(--sin)} svg .t-cos{fill:var(--cos-t)} svg .t-tan{fill:var(--tan)} svg .t-rad{fill:var(--rad-t)} svg .t-mut{fill:var(--muted)}
+.bold{font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>One Spinning Circle</h1>
+    <p>All of the core of trigonometry, built from a single radius, one step at a time.</p>
+    <a class="attrib" href="https://www.youtube.com/watch?v=wgNLxPpWz5M" target="_blank" rel="noopener noreferrer" title="All of Trigonometry Is One Spinning Circle by Lemma">[Attribution]</a>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="Animated diagram">
+      <svg id="scene" viewBox="0 0 1000 560" role="img" aria-label=""></svg>
+      <div class="controls" id="controls"></div>
+    </section>
+
+    <aside class="panel" aria-live="polite">
+      <div class="count" id="count"></div>
+      <h2 id="title"></h2>
+      <div class="eli5" id="eli5"></div>
+      <div class="mathbox" id="math"></div>
+      <div class="readout" id="readout" aria-live="off"></div>
+      <div class="hint" id="hint"></div>
+    </aside>
+  </div>
+
+  <nav class="steps" aria-label="Steps">
+    <button class="btn" id="prev">&larr; Back</button>
+    <div class="dots" id="dots"></div>
+    <button class="btn primary" id="next">Next &rarr;</button>
+  </nav>
+  <p class="kbd">Keyboard: &larr; / &rarr; to change step, Space to play or pause. With the diagram focused, &uarr; / &darr; turn the radius (hold Shift for bigger turns).</p>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- constants and small helpers ---------- */
+const TAU = Math.PI * 2, PI = Math.PI, HALF = Math.PI / 2;
+const REDUCE = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const n1 = v => v.toFixed(1);
+/** Format a number with a real minus sign and no "-0.00". */
+const num = (v, d = 2) => {
+  if (Math.abs(v) < 0.5 * Math.pow(10, -d)) v = 0;
+  return (v < 0 ? "−" : "") + Math.abs(v).toFixed(d);
+};
+const deg = t => Math.round(t * 180 / PI) + "°";
+const ease = p => (p <= 0 ? 0 : p >= 1 ? 1 : p * p * (3 - 2 * p));
+/** Eased progress of p through the sub-interval [a, b]. */
+const seg = (p, a, b) => ease((p - a) / (b - a));
+/** Point at math angle a (counter-clockwise, y up) on a circle in SVG coordinates (y down). */
+const P = (c, r, a) => [c.x + r * Math.cos(a), c.y - r * Math.sin(a)];
+
+const L = (x1, y1, x2, y2, cls, ex = "") =>
+  `<line x1="${n1(x1)}" y1="${n1(y1)}" x2="${n1(x2)}" y2="${n1(y2)}" class="${cls}" ${ex}/>`;
+const C = (x, y, r, cls, ex = "") => `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" class="${cls}" ${ex}/>`;
+const Pa = (d, cls, ex = "") => `<path d="${d}" class="${cls}" ${ex}/>`;
+const Tx = (x, y, s, cls = "lbl", anc = "middle") =>
+  `<text x="${n1(x)}" y="${n1(y)}" class="${cls}" text-anchor="${anc}" dominant-baseline="middle">${s}</text>`;
+const poly = pts => "M" + pts.map(q => n1(q[0]) + " " + n1(q[1])).join(" L") + " Z";
+const G = (opacity, inner) => `<g opacity="${Math.max(0, Math.min(1, opacity)).toFixed(2)}">${inner}</g>`;
+
+/** Arc along a circle from angle a0 to a1, as path data. */
+function arcD(c, r, a0, a1) {
+  const n = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 0.04));
+  let d = "";
+  for (let i = 0; i <= n; i++) {
+    const [x, y] = P(c, r, a0 + (a1 - a0) * i / n);
+    d += (i ? " L" : "M") + n1(x) + " " + n1(y);
+  }
+  return d;
+}
+
+/** Filled angle wedge from a0 to a1. */
+function wedge(c, r, a0, a1) {
+  if (Math.abs(a1 - a0) < 0.005) return "";
+  return Pa(`M${n1(c.x)} ${n1(c.y)} L` + arcD(c, r, a0, a1).slice(1) + " Z", "wedge");
+}
+
+/**
+ * Plot fn(t) for t in [t0, t1], where t = 0..2pi maps to x0..x0+w and fn = 1 maps to amp pixels.
+ * Values beyond +-clip are cut at the clip line so tangent's branches stay separate.
+ */
+function curve(x0, y0, w, amp, fn, t0, t1, cls, clip = 1e9) {
+  if (t1 - t0 < 1e-4) return "";
+  const n = Math.max(2, Math.ceil((t1 - t0) / TAU * 400));
+  let d = "", pen = false, prevX = 0, prevV = 0;
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + (t1 - t0) * i / n, v = fn(t), x = x0 + w * t / TAU;
+    const out = !isFinite(v) || Math.abs(v) > clip;
+    if (out) {
+      if (pen) d += " L" + n1(x) + " " + n1(y0 - amp * Math.sign(v) * clip);
+      pen = false;
+    } else {
+      if (!pen) {
+        d += i > 0 && isFinite(prevV) && Math.abs(prevV) > clip && Math.sign(prevV) === Math.sign(v)
+          ? " M" + n1(prevX) + " " + n1(y0 - amp * Math.sign(v) * clip) + " L"
+          : " M";
+      } else d += " L";
+      d += n1(x) + " " + n1(y0 - amp * v);
+      pen = true;
+    }
+    prevX = x; prevV = v;
+  }
+  return d ? Pa(d.trim(), cls) : "";
+}
+
+/** Horizontal "measuring tape" with ticks at quarter turns. */
+function tapeAxis(x0, y0, w, cls = "tape", labels = true) {
+  let s = L(x0, y0, x0 + w, y0, cls);
+  const names = ["0", "π/2", "π", "3π/2", "2π"];
+  for (let k = 0; k <= 4; k++) {
+    const x = x0 + w * k / 4;
+    s += L(x, y0 - 8, x, y0 + 8, "tick");
+    if (labels) s += Tx(x, y0 + 28, names[k], "small");
+  }
+  return s;
+}
+
+/** Unit-circle disk with optional faint axes. */
+function base(c, R, axes = true) {
+  let s = "";
+  if (axes) s += L(c.x - R - 24, c.y, c.x + R + 24, c.y, "axis") + L(c.x, c.y - R - 24, c.x, c.y + R + 24, "axis");
+  return s + C(c.x, c.y, R, "edge");
+}
+
+/** The radius ("stick") at angle th, with angle wedge and draggable-looking tip. */
+function stick(c, R, th, o = {}) {
+  const [x, y] = P(c, R, th);
+  let s = "";
+  if (o.wedge !== false) {
+    const wr = Math.min(44, R * 0.3);
+    s += wedge(c, wr, 0, th);
+    if (o.theta !== false && th > 0.15) {
+      // past half a turn the label sits above the axis, so keep it clear of the "cos θ" label there
+      const [lx, ly] = P(c, wr + (th > PI ? 30 : 18), th / 2);
+      s += Tx(lx, ly, "θ", "lbl");
+    }
+  }
+  s += L(c.x, c.y, x, y, "rad") + C(c.x, c.y, 6, "hub");
+  if (o.halo !== false) s += C(x, y, 16, "halo");
+  return s + C(x, y, 8, "tip");
+}
+
+/** Sine (vertical, blue) and cosine (horizontal, green) legs; g grows them in from 0 to 1. */
+function legs(c, R, th, g = 1, which = "both") {
+  const [x, y] = P(c, R, th);
+  let s = "";
+  if (which !== "sin") s += L(c.x, c.y, c.x + (x - c.x) * g, c.y, "cosl");
+  if (which !== "cos") s += L(x, c.y, x, c.y + (y - c.y) * g, "sinl");
+  return s;
+}
+
+/** "sin θ" / "cos θ" labels placed beside the legs. */
+function legLabels(c, R, th) {
+  const [x, y] = P(c, R, th), cs = Math.cos(th), sn = Math.sin(th);
+  let s = "";
+  if (Math.abs(sn) > 0.12) s += Tx(x + (cs >= 0 ? 14 : -14), (c.y + y) / 2, "sin θ", "lbl t-sin", cs >= 0 ? "start" : "end");
+  if (Math.abs(cs) > 0.15) s += Tx((c.x + x) / 2, c.y + (sn >= 0 ? 26 : -26), "cos θ", "lbl t-cos");
+  return s;
+}
+
+const row = (k, v, cls = "") => `<div class="row"><span class="${cls}">${k}</span><span>${v}</span></div>`;
+const frac = (a, b) => `<span class="frac"><span>${a}</span><span>${b}</span></span>`;
+
+/* ---------- the steps ---------- */
+const STEPS = [
+/* 1 */ {
+  title: "Three things… or one?",
+  theta: 0, spin: true, speed: 0.6, intro: 2200,
+  center: { x: 180, y: 280, r: 120 }, controls: ["play"],
+  eli5: `<p>In school, sine, cosine and tangent usually arrive as three separate squiggles to memorize. They come with a triangle rule (SOH CAH TOA), a table of special angles, and a strange unit called the radian.</p>
+         <p><b>Watch the spinning dot.</b> The marker on all three graphs is reading the same dot on the same circle. By the last step you will have seen every one of those things come out of this one circle.</p>`,
+  math: `Three graphs, one input: y = <span class="c-sin">sin θ</span>, y = <span class="c-cos">cos θ</span>, y = <span class="c-tan">tan θ</span>`,
+  hint: "Press Next (or the right arrow key) to build it from nothing.",
+  draw(S, p) {
+    const c = { x: 180, y: 280 }, R = 120, th = S.theta;
+    let s = base(c, R) + legs(c, R, th) + stick(c, R, th, { theta: false });
+    const x0 = 390, w = 570, amp = 52;
+    const rows = [["sin θ", Math.sin, 105, "sin"], ["cos θ", Math.cos, 280, "cos"], ["tan θ", Math.tan, 455, "tan"]];
+    rows.forEach(([nm, fn, y, k], i) => {
+      let g = L(x0, y, x0 + w, y, "axis") + curve(x0, y, w, amp, fn, 0, TAU, k + "c faintc", 1.5) + curve(x0, y, w, amp, fn, 0, th, k + "c", 1.5);
+      const v = fn(th);
+      if (isFinite(v) && Math.abs(v) <= 1.5) g += C(x0 + w * th / TAU, y - amp * v, 6, "mk-" + k);
+      g += Tx(x0 + 4, y - amp - 18, nm, "lbl t-" + k, "start");
+      s += G(seg(p, 0.05 + i * 0.2, 0.35 + i * 0.2), g);
+    });
+    s += G(seg(p, 0.05, 0.35), L(x0 + w * th / TAU, 40, x0 + w * th / TAU, 525, "cursor"));
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` +
+    row("angle", deg(S.theta)) + row("sin θ", num(Math.sin(S.theta)), "c-sin") + row("cos θ", num(Math.cos(S.theta)), "c-cos") +
+    row("tan θ", Math.abs(Math.cos(S.theta)) < 0.01 ? "undefined" : num(Math.tan(S.theta)), "c-tan")
+},
+
+/* 2 */ {
+  title: "Start with a length of 1",
+  theta: 0, intro: 3600, center: { x: 500, y: 285, r: 190 }, controls: [],
+  eli5: `<p>Take a stick and call its length <b>1</b>. Not 1 inch or 1 meter, just 1.</p>
+         <p>Spin it around one end. The other end draws a circle. A circle whose radius is 1 is called the <b>unit circle</b>, and everything in this explainer happens on it.</p>`,
+  math: `radius r = 1 &nbsp;→&nbsp; the unit circle`,
+  hint: "After the animation, drag the dot to spin the stick yourself.",
+  draw(S, p) {
+    const c = { x: 500, y: 285 }, R = 190;
+    let s = "";
+    if (p < 1) {
+      const g = seg(p, 0, 0.28), a = seg(p, 0.35, 0.95) * TAU;
+      if (a > 0.01) s += Pa(arcD(c, R, 0, a), "edgeline");
+      const [x, y] = P(c, R * g, a);
+      s += L(c.x, c.y, x, y, "rad") + C(c.x, c.y, 6, "hub") + C(x, y, 8, "tip");
+      if (p < 0.35 && g > 0.05) s += Tx(c.x + R * g / 2, c.y - 26, "1", "big t-rad");
+      return s;
+    }
+    const th = S.theta;
+    s += base(c, R, false) + stick(c, R, th, { wedge: false });
+    const [mx, my] = P(c, R / 2, th), [lx, ly] = P({ x: mx, y: my }, 26, th + HALF);
+    s += Tx(lx, ly, "1", "big t-rad");
+    s += Tx(c.x, c.y + R + 40, "the unit circle (radius 1)", "lbl t-mut");
+    return s;
+  }
+},
+
+/* 3 */ {
+  title: "Turn it by an angle",
+  theta: 0.7, intro: 1400, center: { x: 500, y: 285, r: 190 }, controls: [],
+  eli5: `<p>Now turn the stick only part of the way. How far it turned is the <b>angle</b>, written <b>θ</b> (the Greek letter theta). We measure it from “pointing right”, turning counter-clockwise.</p>
+         <p>All of trigonometry is really answering one question: <b>when the stick turns by θ, where does its tip end up?</b></p>`,
+  math: `θ = how far the radius has turned (counter-clockwise from the positive x-axis)`,
+  hint: "Drag the dot to change the angle.",
+  draw(S, p, now) {
+    const c = { x: 500, y: 285 }, R = 190, th = p < 1 ? S.theta * ease(p) : S.theta;
+    let s = base(c, R) + stick(c, R, th);
+    const [x, y] = P(c, R, th);
+    s += C(x, y, REDUCE ? 20 : 20 + 5 * Math.sin(now / 240), "ring");
+    const [qx, qy] = P(c, R + 48, th);
+    s += Tx(qx, qy, "?", "big t-rad");
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` + row("angle θ", deg(S.theta))
+},
+
+/* 4 */ {
+  title: "Sine is how high, cosine is how far over",
+  theta: 0.7, intro: 1600, center: { x: 500, y: 285, r: 190 }, controls: ["play"], speed: 0.5,
+  eli5: `<p>Drop a line straight down from the tip. Its height is called the <b class="c-sin">sine</b> of θ.</p>
+         <p>The distance across from the center is the <b class="c-cos">cosine</b> of θ.</p>
+         <p>That is the whole definition. Pointing right: height 0, across 1. Pointing straight up: they swap.</p>`,
+  math: `tip of the radius = (<span class="c-cos">cos θ</span>, <span class="c-sin">sin θ</span>)`,
+  hint: "Drag the dot to the right and to the top to see the swap.",
+  draw(S, p) {
+    const c = { x: 500, y: 285 }, R = 190, th = S.theta;
+    let s = base(c, R) + legs(c, R, th, seg(p, 0, 0.7)) + stick(c, R, th);
+    if (p > 0.6) s += G(seg(p, 0.6, 1), legLabels(c, R, th));
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` + row("angle θ", deg(S.theta)) +
+    row("sin θ (how high)", num(Math.sin(S.theta)), "c-sin") + row("cos θ (how far over)", num(Math.cos(S.theta)), "c-cos")
+},
+
+/* 5 */ {
+  title: "Below and left count as negative",
+  theta: 0.5, spin: true, speed: 0.45, center: { x: 380, y: 265, r: 170 }, controls: ["play"],
+  eli5: `<p>Keep turning past the top and the tip ends up <b>left</b> of the center, so cosine becomes negative. Go below the middle and sine becomes negative.</p>
+         <p>So sine and cosine are not really lengths. They are the tip's <b>position</b>: up is +, down is −, right is +, left is −. The two number lines track them.</p>`,
+  math: `−1 ≤ sin θ ≤ 1 and −1 ≤ cos θ ≤ 1<br>Signs of (cos, sin) by quarter: I (+, +), II (−, +), III (−, −), IV (+, −)`,
+  hint: "Drag the dot into each quarter of the circle.",
+  draw(S) {
+    const c = { x: 380, y: 265 }, R = 170, th = S.theta, cs = Math.cos(th), sn = Math.sin(th);
+    const q = Math.floor(th / HALF) % 4;
+    let s = Pa(`M${c.x} ${c.y} L` + arcD(c, R, q * HALF, (q + 1) * HALF).slice(1) + " Z", "hl");
+    s += base(c, R).replace('class="edge"', 'class="edge" style="fill:none"');
+    const signs = ["+ , +", "− , +", "− , −", "+ , −"];
+    for (let k = 0; k < 4; k++) {
+      const [x, y] = P(c, R * 0.62, PI / 4 + k * HALF);
+      s += Tx(x, y, signs[k], k === q ? "lbl bold" : "small");
+    }
+    const [tx, ty] = P(c, R, th);
+    const ym = c.y + R + 48, xm = c.x + R + 72;
+    // cos number line (horizontal, under the circle)
+    s += L(c.x - R, ym, c.x + R, ym, "tick");
+    [[-1, "−1"], [0, "0"], [1, "1"]].forEach(([v, t]) => { s += L(c.x + v * R, ym - 7, c.x + v * R, ym + 7, "tick") + Tx(c.x + v * R, ym + 24, t, "small"); });
+    // sin number line (vertical, right of the circle)
+    s += L(xm, c.y - R, xm, c.y + R, "tick");
+    [[-1, "−1"], [0, "0"], [1, "1"]].forEach(([v, t]) => { s += L(xm - 7, c.y - v * R, xm + 7, c.y - v * R, "tick") + Tx(xm + 14, c.y - v * R, t, "small", "start"); });
+    s += L(tx, ty, tx, ym, "proj") + L(tx, ty, xm, ty, "proj");
+    s += legs(c, R, th) + stick(c, R, th, { theta: false });
+    s += C(tx, ym, 8, "mk-cos") + C(xm, ty, 8, "mk-sin");
+    const X = 720;
+    s += Tx(X, 150, `sin θ = ${num(sn)}`, "big t-sin", "start");
+    s += Tx(X, 205, `cos θ = ${num(cs)}`, "big t-cos", "start");
+    s += Tx(X, 275, sn >= 0 ? "above the middle:" : "below the middle:", "lbl t-mut", "start");
+    s += Tx(X, 302, sn >= 0 ? "sine is +" : "sine is −", "lbl t-sin", "start");
+    s += Tx(X, 350, cs >= 0 ? "right of center:" : "left of center:", "lbl t-mut", "start");
+    s += Tx(X, 377, cs >= 0 ? "cosine is +" : "cosine is −", "lbl t-cos", "start");
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` + row("angle θ", deg(S.theta)) +
+    row("tip position", `(${num(Math.cos(S.theta))}, ${num(Math.sin(S.theta))})`) +
+    `<div class="note">Quarter ${["I", "II", "III", "IV"][Math.floor(S.theta / HALF) % 4]} of the circle.</div>`
+},
+
+/* 6 */ {
+  title: "Bigger triangles: SOH and CAH",
+  theta: 0.62, intro: 1800, clamp: [0.09, 1.48], center: { x: 150, y: 330, r: 100 }, controls: ["scale"],
+  eli5: `<p>Inside the circle hides a right triangle whose long side (the <b class="c-rad">hypotenuse</b>) is the radius, so it is 1.</p>
+         <p>Blow the triangle up to any size while keeping the same angle and every side grows by the same factor. If the long side becomes 3, the height becomes 3 × sin θ. Divide the height by 3 and you get sin θ back.</p>
+         <p>That is all SOH and CAH say. It is not a new rule, just the unit circle scaled up.</p>`,
+  math: `<span class="c-sin">sin θ</span> = ${frac('<span class="c-sin">opposite</span>', '<span class="c-rad">hypotenuse</span>')} (SOH)
+         &nbsp;&nbsp; <span class="c-cos">cos θ</span> = ${frac('<span class="c-cos">adjacent</span>', '<span class="c-rad">hypotenuse</span>')} (CAH)`,
+  hint: "Use the size slider. Drag the dot on the small circle to change the angle.",
+  draw(S, p) {
+    const c = { x: 150, y: 330 }, R = 100, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const T = P(c, R, th);
+    let s = base(c, R) + Pa(poly([[c.x, c.y], T, [T[0], c.y]]), "tri") + legs(c, R, th) + stick(c, R, th, { theta: false, halo: true });
+    const [mx, my] = P(c, R / 2, th), [lx, ly] = P({ x: mx, y: my }, 16, th + HALF);
+    s += Tx(lx, ly, "1", "lbl t-rad");
+    const H = 1 + (S.scale - 1) * seg(p, 0.1, 1), u = 70;
+    const A = [360, 470], B = [A[0] + H * u * cs, A[1]], Tp = [B[0], A[1] - H * u * sn];
+    s += Pa(poly([A, B, Tp]), "tri") + wedge({ x: A[0], y: A[1] }, 40, 0, th);
+    s += L(A[0], A[1], B[0], B[1], "cosl") + L(B[0], B[1], Tp[0], Tp[1], "sinl") + L(A[0], A[1], Tp[0], Tp[1], "rad");
+    s += Pa(`M${n1(B[0] - 14)} ${n1(B[1])} L${n1(B[0] - 14)} ${n1(B[1] - 14)} L${n1(B[0])} ${n1(B[1] - 14)}`, "tick");
+    const [wx, wy] = P({ x: A[0], y: A[1] }, 58, th / 2);
+    s += Tx(wx, wy, "θ", "lbl");
+    const M = [(A[0] + Tp[0]) / 2, (A[1] + Tp[1]) / 2];
+    // keep the two-line "opposite" label clear of the θ label and the "adjacent" label on thin triangles
+    const ox = Math.max(B[0] + 14, A[0] + 76), oy = Math.min((B[1] + Tp[1]) / 2, A[1] - 44);
+    let lb = Tx(M[0] - 28 * sn, M[1] - 28 * cs, `hypotenuse ${H.toFixed(1)}`, "lbl t-rad", "end");
+    lb += Tx(ox, oy, `opposite ${H.toFixed(1)} × sin θ`, "lbl t-sin", "start");
+    lb += Tx(ox, oy + 26, `= ${num(H * sn)}`, "lbl t-sin", "start");
+    lb += Tx((A[0] + B[0]) / 2, A[1] + 30, `adjacent ${H.toFixed(1)} × cos θ = ${num(H * cs)}`, "lbl t-cos");
+    return s + G(seg(p, 0.75, 1), lb);
+  },
+  readout: S => {
+    const H = S.scale, sn = Math.sin(S.theta), cs = Math.cos(S.theta);
+    return `<span class="k">Check it</span>` + row("angle θ", deg(S.theta)) +
+      row("opposite ÷ hypotenuse", `${num(H * sn)} ÷ ${H.toFixed(1)} = ${num(sn)}`, "c-sin") +
+      row("adjacent ÷ hypotenuse", `${num(H * cs)} ÷ ${H.toFixed(1)} = ${num(cs)}`, "c-cos") +
+      `<div class="note">The ratios do not change when you resize the triangle: they are sin θ and cos θ.</div>`;
+  }
+},
+
+/* 7 */ {
+  title: "A free fact: sin² + cos² = 1",
+  theta: 0.66, intro: 2600, clamp: [0.12, 1.45], center: { x: 300, y: 300, r: 160 }, controls: [],
+  eli5: `<p>Build a square on each side of the triangle. Pythagoras' theorem (a proven fact about every right triangle) says the two small squares together have exactly the same area as the big one.</p>
+         <p>The big square sits on the radius, whose length is 1, so its area is 1. That means sin²θ + cos²θ = 1 for every angle, which is just another way of saying <b>the tip always stays on the circle</b>.</p>
+         <p>The bar on the right adds the two small areas so you can watch them always fill exactly 1.</p>`,
+  math: `(<span class="c-sin">sin θ</span>)² + (<span class="c-cos">cos θ</span>)² = <span class="c-rad">1</span>² = 1`,
+  hint: "Drag the dot: the two areas trade off but always add up to 1.",
+  draw(S, p) {
+    const c = { x: 300, y: 300 }, R = 160, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const O = [c.x, c.y], T = P(c, R, th), F = [T[0], c.y], nx = -R * sn, ny = -R * cs;
+    let s = base(c, R);
+    const sqC = poly([O, F, [F[0], F[1] + R * cs], [O[0], O[1] + R * cs]]);
+    const sqS = poly([F, T, [T[0] + R * sn, T[1]], [F[0] + R * sn, F[1]]]);
+    const sq1 = poly([O, T, [T[0] + nx, T[1] + ny], [O[0] + nx, O[1] + ny]]);
+    s += G(seg(p, 0, 0.3), Pa(sqC, "sq-cos") + Tx((O[0] + F[0]) / 2, c.y + R * cs / 2, "cos²θ", R * cs > 70 ? "lbl t-cos" : "small t-cos"));
+    s += G(seg(p, 0.2, 0.5), Pa(sqS, "sq-sin") + Tx(F[0] + R * sn / 2, (F[1] + T[1]) / 2, "sin²θ", R * sn > 70 ? "lbl t-sin" : "small t-sin"));
+    s += G(seg(p, 0.4, 0.7), Pa(sq1, "sq-one") + Tx((O[0] + T[0]) / 2 + nx / 2, (O[1] + T[1]) / 2 + ny / 2, "1", "big t-rad"));
+    s += Pa(poly([O, T, F]), "tri") + legs(c, R, th) + stick(c, R, th, { theta: false });
+    // stacked bar of the two areas
+    const bx = 610, by = 250, W = 340, h = 42, wc = W * cs * cs;
+    let b = Pa(`M${bx} ${by} h${n1(wc)} v${h} h${n1(-wc)} Z`, "bar-cos") + Pa(`M${n1(bx + wc)} ${by} h${n1(W - wc)} v${h} h${n1(-(W - wc))} Z`, "bar-sin");
+    b += Tx(bx, by - 22, `cos²θ = ${(cs * cs).toFixed(3)}`, "lbl t-cos", "start");
+    b += Tx(bx + W, by - 56, `sin²θ = ${(sn * sn).toFixed(3)}`, "lbl t-sin", "end");
+    b += L(bx, by + h + 18, bx + W, by + h + 18, "tick") + L(bx, by + h + 10, bx, by + h + 26, "tick") + L(bx + W, by + h + 10, bx + W, by + h + 26, "tick");
+    b += Tx(bx + W / 2, by + h + 44, "together: exactly 1", "lbl t-rad");
+    b += Tx(bx + W / 2, by + h + 110, `${(cs * cs).toFixed(3)} + ${(sn * sn).toFixed(3)} = 1`, "big");
+    s += G(seg(p, 0.65, 1), b);
+    return s;
+  },
+  readout: S => {
+    const sn = Math.sin(S.theta), cs = Math.cos(S.theta);
+    return `<span class="k">Right now</span>` + row("angle θ", deg(S.theta)) +
+      row("cos²θ", (cs * cs).toFixed(3), "c-cos") + row("sin²θ", (sn * sn).toFixed(3), "c-sin") +
+      row("sum", (cs * cs + sn * sn).toFixed(3), "c-rad");
+  }
+},
+
+/* 8 */ {
+  title: "A better ruler for angles: radians",
+  theta: 1, intro: 9000, center: { x: 470, y: 290, r: 170 }, controls: [],
+  eli5: `<p><b>Degrees</b> chop a full turn into 360 slices. The number 360 is a convention handed down from ancient astronomy. It does not come from the circle itself.</p>
+         <p>A more natural ruler is the <b>radius itself</b>. Bend one radius around the edge: the angle it covers is <b>1 radian</b>, about 57.3°. A little more than 3 radii (exactly π ≈ 3.14) gets you halfway round, and 2π ≈ 6.28 radii gets you all the way.</p>
+         <p>So an angle in radians simply says <b>how many radii the tip has traveled</b> along the edge.</p>`,
+  math: `arc length = radius × θ (θ in radians). On the unit circle the radius is 1, so arc length = θ.<br>180° = π rad, so 1 rad = 180°/π ≈ 57.3°`,
+  hint: "After the animation, drag the dot: the thick orange arc is the distance traveled.",
+  draw(S, p) {
+    const c = { x: 470, y: 290 }, R = 170;
+    let s = base(c, R, false);
+    let ring = "";
+    for (let k = 0; k < 360; k++) {
+      const a = k * PI / 180, l = k % 10 === 0 ? 12 : 6;
+      const [x1, y1] = P(c, R + 4, a), [x2, y2] = P(c, R + 4 + l, a);
+      ring += `M${n1(x1)} ${n1(y1)}L${n1(x2)} ${n1(y2)}`;
+    }
+    s += G(p < 1 ? seg(p, 0, 0.08) * (1 - 0.65 * seg(p, 0.3, 0.4)) : 0.35, Pa(ring, "tick"));
+    if (p < 0.3) s += G(seg(p, 0, 0.08), Tx(c.x, c.y - R - 44, "360°: a historical choice", "lbl t-mut"));
+    const radTicks = tot => {
+      let t = "";
+      for (let k = 1; k <= 6; k++) if (k <= tot + 1e-6) {
+        const [x1, y1] = P(c, R - 10, k), [x2, y2] = P(c, R + 12, k), [lx, ly] = P(c, R + 32, k);
+        t += L(x1, y1, x2, y2, "tick") + Tx(lx, ly, String(k), "lbl t-rad");
+      }
+      if (tot >= PI) t += Tx(c.x - R - 66, c.y - 8, "π", "big t-rad") + Tx(c.x - R - 66, c.y + 22, "≈ 3.14", "small", "middle");
+      if (tot >= TAU - 0.01) t += Tx(c.x + R + 70, c.y - 8, "2π", "big t-rad") + Tx(c.x + R + 70, c.y + 22, "≈ 6.28", "small", "middle");
+      return t;
+    };
+    if (p < 1) {
+      s += L(c.x, c.y, c.x + R, c.y, "rad") + C(c.x, c.y, 6, "hub");
+      if (p >= 0.12 && p < 0.3) {
+        const b = seg(p, 0.14, 0.28), pts = [];
+        for (let i = 0; i <= 40; i++) {
+          const t = i / 40, sx = c.x + R, sy = c.y - t * R, [ax, ay] = P(c, R, t);
+          pts.push([sx + (ax - sx) * b, sy + (ay - sy) * b]);
+        }
+        s += Pa("M" + pts.map(q => n1(q[0]) + " " + n1(q[1])).join(" L"), "arcband");
+        s += Tx(c.x + R + 60, c.y - R * 0.55, b < 0.5 ? "one radius long…" : "…bent onto the edge", "lbl t-rad", "start");
+      }
+      if (p >= 0.3) {
+        const tot = 1 + seg(p, 0.36, 0.95) * (TAU - 1);
+        s += Pa(arcD(c, R, 0, tot), "arcband") + radTicks(tot);
+        if (tot < 1.6) s += wedge(c, 60, 0, 1) + Tx(c.x + R + 50, c.y - R * 0.62, "1 radian ≈ 57.3°", "lbl t-rad", "start");
+      }
+      return s;
+    }
+    const th = S.theta;
+    s += G(0.5, radTicks(TAU));
+    s += Pa(arcD(c, R, 0, th), "arcband") + stick(c, R, th);
+    if (th > 0.35) { const [ax, ay] = P(c, R - 36, th / 2); s += Tx(ax, ay, `${num(th)}`, "lbl t-rad bold"); }
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` +
+    row("angle in radians", num(S.theta), "c-rad") + row("angle in degrees", (S.theta * 180 / PI).toFixed(1) + "°") +
+    row("arc traveled", `${num(S.theta)} radius-lengths`, "c-rad")
+},
+
+/* 9 */ {
+  title: "Unroll the edge: the sine wave",
+  theta: 0, intro: 2600, spin: true, speed: 0.8, center: { x: 160, y: 290, r: 90 }, controls: ["play"],
+  eli5: `<p>Peel the circle's edge off and lay it flat like a measuring tape. The tape is exactly as long as the edge, so every spot on it is an angle: 0, π/2 (a quarter turn), π, 3π/2, 2π.</p>
+         <p>Spin the stick and carry the tip's height across to the tape. The trail it leaves is the <b class="c-sin">sine wave</b>. It is not a new shape to memorize. It is the height of a dot going round a circle, unrolled.</p>`,
+  math: `y = <span class="c-sin">sin θ</span>: 0 at 0, 1 at π/2, 0 at π, −1 at 3π/2, 0 at 2π`,
+  hint: "Pause and drag the dot to place it anywhere.",
+  draw(S, p) {
+    const c = { x: 160, y: 290 }, R = 90, x0 = 330, w = TAU * R;
+    if (p < 1) {
+      const u = seg(p, 0.1, 1) * TAU;
+      return C(c.x, c.y, R, "disk") + Pa(arcD(c, R, u, TAU), "edgeline") + L(x0, c.y, x0 + R * u, c.y, "tape") +
+        L(c.x, c.y, c.x + R, c.y, "rad") + C(c.x, c.y, 6, "hub") + G(1 - seg(p, 0, 0.2), Tx(x0 + 20, c.y - 40, "peel the edge off…", "lbl t-mut", "start"));
+    }
+    const th = S.theta, [tx, ty] = P(c, R, th), gx = x0 + R * th;
+    let s = base(c, R) + tapeAxis(x0, c.y, w);
+    s += Pa(arcD(c, R, 0, th), "arcthin") + (th > 0.01 ? L(x0, c.y, gx, c.y, "arcthin") : "");
+    s += curve(x0, c.y, w, R, Math.sin, 0, th, "sinc");
+    s += legs(c, R, th, 1, "sin") + stick(c, R, th, { theta: false });
+    s += L(tx, ty, gx, ty, "proj") + C(gx, ty, 7, "mk-sin");
+    s += Pa(`M${n1(gx)} ${c.y + 10} l-7 12 h14 Z`, "mk-rad");
+    if (th > HALF) s += Tx(x0 + w / 4, c.y - R - 24, "sin θ", "lbl t-sin");
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` +
+    row("position on the tape (θ)", num(S.theta), "c-rad") + row("height of the tip (sin θ)", num(Math.sin(S.theta)), "c-sin")
+},
+
+/* 10 */ {
+  title: "Cosine is the same wave, a quarter turn ahead",
+  theta: 0, spin: true, speed: 0.8, center: { x: 160, y: 290, r: 90 }, controls: ["play", "shift"],
+  eli5: `<p>Do the same thing with the across distance (left of center counts as negative) and plot it as a height. You get the <b class="c-cos">cosine wave</b>.</p>
+         <p>Press <b>Slide cosine</b>: shift the cosine wave a quarter turn to the right and it lands exactly on top of sine. Cosine reaches every value a quarter turn <i>earlier</i> than sine does.</p>
+         <p>Sine and cosine are one circle, seen from two sides.</p>`,
+  math: `<span class="c-cos">cos θ</span> = <span class="c-sin">sin(θ + π/2)</span> &nbsp;and&nbsp; <span class="c-sin">sin θ</span> = <span class="c-cos">cos(θ − π/2)</span>`,
+  hint: "Use the slide button, then slide it back.",
+  draw(S) {
+    const c = { x: 160, y: 290 }, R = 90, x0 = 330, w = TAU * R, th = S.theta;
+    let s = base(c, R) + tapeAxis(x0, c.y, w);
+    const full = S.shiftTarget > 0 || S.shift > 0.001;
+    if (full) {
+      const sh = S.shift * HALF;
+      s += curve(x0, c.y, w, R, Math.sin, 0, TAU, "sinc");
+      s += curve(x0, c.y, w, R, t => Math.cos(t - sh), 0, TAU, "cosc");
+      if (S.shift > 0.02) {
+        const yb = c.y - R - 36, xe = x0 + R * sh;
+        s += L(x0, yb, xe, yb, "tick") + L(x0, yb - 8, x0, yb + 8, "tick") + L(xe, yb - 8, xe, yb + 8, "tick");
+        if (S.shift > 0.9) s += Tx((x0 + xe) / 2, yb - 22, "π/2 = a quarter turn", "lbl");
+      }
+      s += Tx(x0 + w * 0.62, c.y + R + 56, S.shift > 0.98 ? "shifted cosine = sine" : "cosine sliding…", "lbl t-mut");
+    } else {
+      s += curve(x0, c.y, w, R, Math.sin, 0, th, "sinc") + curve(x0, c.y, w, R, Math.cos, 0, th, "cosc");
+      const gx = x0 + R * th;
+      s += C(gx, c.y - R * Math.sin(th), 7, "mk-sin") + C(gx, c.y - R * Math.cos(th), 7, "mk-cos") + L(gx, c.y - R - 10, gx, c.y + R + 10, "cursor");
+      s += Tx(x0 + 4, c.y - R - 24, "sin θ", "lbl t-sin", "start") + Tx(x0 + 74, c.y - R - 24, "cos θ", "lbl t-cos", "start");
+    }
+    s += legs(c, R, th) + stick(c, R, th, { theta: false });
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` + row("angle θ", num(S.theta) + " rad") +
+    row("sin θ", num(Math.sin(S.theta)), "c-sin") + row("cos θ", num(Math.cos(S.theta)), "c-cos") +
+    row("sin(θ + π/2)", num(Math.sin(S.theta + HALF)), "c-sin") +
+    `<div class="note">The last two rows always match: cosine is sine, a quarter turn ahead.</div>`
+},
+
+/* 11 */ {
+  title: "The “table of angles”, explained",
+  theta: 0.3, clamp: [0, HALF], center: { x: 300, y: 310, r: 170 }, controls: ["special"],
+  eli5: `<p>The values you were asked to memorize come straight from the picture.</p>
+         <p><b>30°:</b> mirror the triangle below the line. You get a triangle with all three sides equal, so the height is half of 1: sin 30° = ½.</p>
+         <p><b>60°:</b> the same trick sideways gives cos 60° = ½.</p>
+         <p><b>45°:</b> height and across are equal. Pythagoras gives s² + s² = 1, so s = √½ = √2/2 ≈ 0.71.</p>
+         <p>The missing partners then follow from sin² + cos² = 1.</p>`,
+  math: `sin 30° = ½, cos 30° = √3/2 &nbsp;•&nbsp; sin 45° = cos 45° = √2/2 &nbsp;•&nbsp; sin 60° = √3/2, cos 60° = ½`,
+  hint: "Pick an angle button, or drag the dot.",
+  draw(S) {
+    const c = { x: 300, y: 310 }, R = 200, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const O = [c.x, c.y], T = P(c, R, th), dg = th * 180 / PI;
+    const SP = [[0, "0", "1"], [30, "½", "√3/2"], [45, "√2/2", "√2/2"], [60, "√3/2", "½"], [90, "1", "0"]];
+    const near = SP.find(r => Math.abs(r[0] - dg) < 0.6);
+    let s = base(c, R);
+    let lines = ["Pick an angle above, or drag the dot."];
+    if (near && near[0] === 30) {
+      const T2 = [T[0], c.y + R * sn];
+      s += Pa(poly([O, T, T2]), "hl") + L(O[0], O[1], T2[0], T2[1], "rad dash") + L(T[0], T[1], T2[0], T2[1], "sinl dash");
+      s += Tx(T[0] + 14, c.y + R * sn / 2 + 30, "1", "lbl t-sin", "start");
+      lines = ["Mirror the triangle below the line.", "All three sides are 1 (equilateral),", "so the height is half: sin 30° = ½.", "Then cos 30° = √(1 − ¼) = √3/2."];
+    } else if (near && near[0] === 60) {
+      const A = [c.x + R, c.y];
+      s += Pa(poly([O, A, T]), "hl") + L(T[0], T[1], A[0], A[1], "rad dash") + L(O[0], O[1], A[0], A[1], "rad dash");
+      s += Tx((T[0] + A[0]) / 2 + 16, (T[1] + A[1]) / 2, "1", "lbl t-rad", "start");
+      lines = ["Join the tip to the point (1, 0).", "All three sides are 1 (equilateral),", "so the foot is halfway: cos 60° = ½.", "Then sin 60° = √(1 − ¼) = √3/2."];
+    } else if (near && near[0] === 45) {
+      const mc = [(c.x + T[0]) / 2, c.y], ms = [T[0], (c.y + T[1]) / 2];
+      s += L(mc[0] - 3, mc[1] - 9, mc[0] - 3, mc[1] + 9, "tick") + L(mc[0] + 3, mc[1] - 9, mc[0] + 3, mc[1] + 9, "tick");
+      s += L(ms[0] - 9, ms[1] - 3, ms[0] + 9, ms[1] - 3, "tick") + L(ms[0] - 9, ms[1] + 3, ms[0] + 9, ms[1] + 3, "tick");
+      lines = ["Height and across are equal; call them s.", "Pythagoras: s² + s² = 1, so s² = ½,", "so s = √½ = √2/2 ≈ 0.71."];
+    } else if (near && near[0] === 0) {
+      lines = ["Flat: height 0, across 1."];
+    } else if (near && near[0] === 90) {
+      lines = ["Straight up: height 1, across 0."];
+    }
+    s += Pa(poly([O, T, [T[0], c.y]]), "tri") + legs(c, R, th) + stick(c, R, th);
+    // table
+    const tx = 600;
+    s += Tx(tx + 40, 70, "angle", "small") + Tx(tx + 170, 70, "sin", "lbl t-sin") + Tx(tx + 300, 70, "cos", "lbl t-cos");
+    SP.forEach((r, i) => {
+      const y = 112 + i * 46;
+      if (near && near[0] === r[0]) s += Pa(`M${tx - 10} ${y - 21} h380 v42 h-380 Z`, "hl");
+      s += Tx(tx + 40, y, r[0] + "°", "lbl") + Tx(tx + 170, y, r[1], "lbl t-sin") + Tx(tx + 300, y, r[2], "lbl t-cos");
+    });
+    lines.forEach((t, i) => { s += Tx(tx - 10, 380 + i * 30, t, i === 0 ? "lbl" : "lbl t-mut", "start"); });
+    return s;
+  },
+  readout: S => `<span class="k">Right now</span>` + row("angle θ", (S.theta * 180 / PI).toFixed(1) + "°") +
+    row("sin θ", num(Math.sin(S.theta), 3), "c-sin") + row("cos θ", num(Math.cos(S.theta), 3), "c-cos") +
+    `<div class="note">√2/2 ≈ 0.707 and √3/2 ≈ 0.866.</div>`
+},
+
+/* 12 */ {
+  title: "Why waves are everywhere: three knobs",
+  usesTau: true, spin: true, controls: ["play", "A", "f", "phi"],
+  eli5: `<p>Watch the dot from the side and it just bobs up and down. Record that bobbing over time and you get a sine wave. Anything that bobs smoothly and steadily, like a weight on a spring or a <i>gently</i> swinging pendulum, follows this pattern. Complicated signals such as sound can be built by adding many of these waves together.</p>
+         <p>Three knobs set a wave:</p>
+         <ul><li><b>Amplitude</b>: how big the circle is (how tall the wave).</li>
+         <li><b>Frequency</b>: how fast it spins (turns per second). One full turn takes one <b>period</b> = 1 ÷ frequency.</li>
+         <li><b>Phase</b>: where the dot starts (the dashed wave starts at 0).</li></ul>`,
+  math: `y(t) = A · sin(2π f t + φ) &nbsp;&nbsp; period T = 1 / f`,
+  hint: "Move the sliders. The newest point is on the left; older ones scroll right.",
+  draw(S) {
+    const c = { x: 170, y: 285 }, R = 100 * S.A, x0 = 330, x1 = 955, k = 70, tau = S.tau;
+    const yAt = (x, phi) => c.y - 100 * S.A * Math.sin(TAU * S.f * (tau - (x - x0) / k) + phi);
+    const wave = phi => { let d = ""; for (let x = x0; x <= x1; x += 3) d += (x === x0 ? "M" : " L") + x + " " + n1(yAt(x, phi)); return d; };
+    let s = L(x0, c.y, x1, c.y, "axis") + base(c, R);
+    if (Math.abs(S.phi) > 0.01) s += Pa(wave(0), "sinc faintc dash");
+    s += Pa(wave(S.phi), "sinc");
+    const al = TAU * S.f * tau + S.phi, [tx, ty] = P(c, R, al), [sx, sy] = P(c, R, S.phi);
+    s += C(sx, sy, 9, "startdot") + Tx(sx, sy + (Math.sin(S.phi) >= 0 ? -24 : 24), "start", "small");
+    s += legs(c, R, al, 1, "sin") + stick(c, R, al, { wedge: false });
+    s += L(tx, ty, x0, ty, "proj") + C(x0, ty, 7, "mk-sin");
+    // amplitude arrow
+    const ax = 975;
+    s += L(ax, c.y, ax, c.y - R, "tick") + Pa(`M${ax} ${n1(c.y - R)} l-6 12 h12 Z`, "mk-rad") + Tx(ax - 8, c.y - R - 18, "amplitude", "small", "end");
+    // period bracket
+    const len = k / S.f, yb = 470, xe = Math.min(x1, x0 + len);
+    s += L(x0, yb, xe, yb, "tick") + L(x0, yb - 8, x0, yb + 8, "tick") + (xe === x0 + len ? L(xe, yb - 8, xe, yb + 8, "tick") : "");
+    s += Tx((x0 + xe) / 2, yb + 24, `one period = ${(1 / S.f).toFixed(1)} s (one full turn)`, "small");
+    s += Tx(x0, 530, "now", "small", "start") + Tx(x1, 530, "earlier →", "small", "end");
+    return s;
+  },
+  readout: S => `<span class="k">Knobs</span>` + row("amplitude A", S.A.toFixed(2)) +
+    row("frequency f", S.f.toFixed(2) + " turns/s") + row("period 1/f", (1 / S.f).toFixed(2) + " s") +
+    row("phase φ", Math.round(S.phi * 180 / PI) + "° head start")
+},
+
+/* 13 */ {
+  title: "Tangent: where the stick hits a touching line",
+  theta: 0.7, intro: 1800, speed: 0.5, center: { x: 230, y: 290, r: 120 }, controls: ["play"],
+  eli5: `<p>Draw a vertical line that just touches the circle on the right. A line that touches a circle like this is called a <b class="c-tan">tangent line</b>, which is where the name comes from.</p>
+         <p>Extend the stick until it hits that line. The height where it lands is <b class="c-tan">tan θ</b>. Blow the inner triangle up until its bottom is 1 and its height becomes sin θ ÷ cos θ, the same as opposite ÷ adjacent (TOA).</p>
+         <p>Near a quarter turn the stick runs almost parallel to the line, so the meeting point races off toward infinity. Exactly at 90° they never meet, so tan 90° is undefined. When the stick points left, extend it <i>backward</i> through the center to reach the line.</p>`,
+  math: `<span class="c-tan">tan θ</span> = ${frac('<span class="c-sin">opposite</span>', '<span class="c-cos">adjacent</span>')} = ${frac('<span class="c-sin">sin θ</span>', '<span class="c-cos">cos θ</span>')} &nbsp; (undefined when cos θ = 0: at π/2 and 3π/2)`,
+  hint: "Drag the dot all the way around, including into the left half.",
+  draw(S, p) {
+    const c = { x: 230, y: 290 }, R = 120, X = c.x + R, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const T = P(c, R, th), top = 18, bot = 550;
+    let s = base(c, R) + G(seg(p, 0, 0.3), L(X, top, X, bot, "tanline") + Tx(X - 8, bot - 10, "tangent line", "small t-tan", "end"));
+    const und = Math.abs(cs) < 0.02, ext = seg(p, 0.3, 0.8);
+    if (!und && ext > 0) {
+      const Y = c.y - R * sn / cs, Yc = Math.max(top, Math.min(bot, Y)), clipped = Yc !== Y;
+      const t = clipped ? (c.y - Yc) / (R * sn) : 1 / cs, E = [c.x + t * R * cs, c.y - t * R * sn];
+      const Ee = [T[0] + (E[0] - T[0]) * ext, T[1] + (E[1] - T[1]) * ext];
+      if (cs > 0 && !clipped) s += G(seg(p, 0.7, 1), Pa(poly([[c.x, c.y], [X, c.y], [X, Y]]), "hl") + Tx((c.x + X) / 2, c.y + (sn >= 0 ? 24 : -24), "1", "lbl t-cos"));
+      s += L(T[0], T[1], Ee[0], Ee[1], "rad dash");
+      if (ext >= 1) {
+        s += L(X, c.y, X, Yc, "tanl");
+        if (Math.abs(Yc - c.y) > 30) s += Tx(X + 12, (c.y + Yc) / 2, "tan θ", "lbl t-tan", "start");
+        if (clipped) s += Tx(X + 12, Yc + (Y < top ? 16 : -16), Y < top ? "off the chart → ∞" : "off the chart → −∞", "small t-tan", "start");
+      }
+    }
+    if (und) s += Tx(X + 12, c.y - 70, "parallel to the line:", "small t-tan", "start") + Tx(X + 12, c.y - 48, "they never meet", "small t-tan", "start");
+    s += legs(c, R, th) + stick(c, R, th);
+    // graph
+    const x0 = 440, w = 520, clip = 2.15;
+    let g = tapeAxis(x0, c.y, w, "axis");
+    [1, 3].forEach(q => { const x = x0 + w * q / 4; g += L(x, 30, x, 548, "asym") + Tx(x, 16, "undefined", "small t-tan"); });
+    g += curve(x0, c.y, w, R, Math.tan, 0, TAU, "tanc faintc", clip) + curve(x0, c.y, w, R, Math.tan, 0, th, "tanc", clip);
+    const tv = sn / cs;
+    if (!und && Math.abs(tv) <= clip) {
+      const gx = x0 + w * th / TAU, gy = c.y - R * tv;
+      g += C(gx, gy, 7, "mk-tan");
+      if (ext >= 1) g += L(X, gy, gx, gy, "proj");
+    }
+    return s + G(seg(p, 0.5, 1), g);
+  },
+  readout: S => {
+    const sn = Math.sin(S.theta), cs = Math.cos(S.theta), und = Math.abs(cs) < 0.02;
+    return `<span class="k">Right now</span>` + row("angle θ", deg(S.theta)) +
+      row("sin θ", num(sn), "c-sin") + row("cos θ", num(cs), "c-cos") +
+      row("tan θ = sin ÷ cos", und ? "undefined" : num(sn / cs), "c-tan") +
+      (cs < -0.02 ? `<div class="note">The stick points left, so extend it backward through the center to reach the line.</div>` : "");
+  }
+},
+
+/* 14 */ {
+  title: "All of it, in one picture",
+  theta: 0, spin: true, speed: 0.5, center: { x: 180, y: 290, r: 100 }, controls: ["play"],
+  eli5: `<ul><li><b class="c-sin">Sine</b> is how high the tip is.</li>
+         <li><b class="c-cos">Cosine</b> is how far over it is (left counts as negative).</li>
+         <li><b class="c-tan">Tangent</b> is where the stick meets the touching line.</li>
+         <li><b class="c-rad">Radians</b> measure how far the tip has traveled along the edge.</li>
+         <li>The <b>graphs</b> are the circle, unrolled.</li></ul>
+         <p>This picture is the core of trigonometry, not every corner of it. Topics such as the law of cosines for non-right triangles, the inverse functions, and the angle-addition formulas are built on top of it.</p>`,
+  math: `tip = (<span class="c-cos">cos θ</span>, <span class="c-sin">sin θ</span>), &nbsp; <span class="c-tan">tan θ</span> = sin θ / cos θ, &nbsp; sin²θ + cos²θ = 1, &nbsp; arc = θ`,
+  hint: "Next time you see a smooth wave, look for the circle behind it.",
+  draw(S) {
+    const c = { x: 180, y: 290 }, R = 100, X = c.x + R, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const T = P(c, R, th), top = 40, bot = 540;
+    let s = base(c, R) + L(X, top, X, bot, "tanline");
+    if (Math.abs(cs) > 0.02) {
+      const Y = c.y - R * sn / cs, Yc = Math.max(top, Math.min(bot, Y));
+      const t = Yc !== Y ? (c.y - Yc) / (R * sn) : 1 / cs;
+      s += L(T[0], T[1], c.x + t * R * cs, c.y - t * R * sn, "rad dash") + L(X, c.y, X, Yc, "tanl");
+    }
+    s += Pa(arcD(c, R, 0, th), "arcthin") + legs(c, R, th) + stick(c, R, th, { theta: false });
+    const x0 = 390, w = 560, clip = 2.4;
+    s += tapeAxis(x0, c.y, w, "axis");
+    [[Math.sin, "sin"], [Math.cos, "cos"], [Math.tan, "tan"]].forEach(([fn, k]) => {
+      s += curve(x0, c.y, w, R, fn, 0, TAU, k + "c faintc", clip) + curve(x0, c.y, w, R, fn, 0, th, k + "c", clip);
+      const v = fn(th);
+      if (isFinite(v) && Math.abs(v) <= clip && !(k === "tan" && Math.abs(cs) < 0.02)) s += C(x0 + w * th / TAU, c.y - R * v, 6, "mk-" + k);
+    });
+    const gx = x0 + w * th / TAU;
+    s += L(gx, top, gx, bot, "cursor");
+    s += Tx(x0, 28, "sin", "lbl t-sin", "start") + Tx(x0 + 60, 28, "cos", "lbl t-cos", "start") + Tx(x0 + 124, 28, "tan", "lbl t-tan", "start");
+    return s;
+  },
+  readout: S => {
+    const sn = Math.sin(S.theta), cs = Math.cos(S.theta);
+    return `<span class="k">Right now</span>` + row("angle (radians = arc traveled)", num(S.theta), "c-rad") +
+      row("sin θ", num(sn), "c-sin") + row("cos θ", num(cs), "c-cos") +
+      row("tan θ", Math.abs(cs) < 0.02 ? "undefined" : num(sn / cs), "c-tan");
+  }
+}
+];
+
+/* ---------- state ---------- */
+const S = {
+  step: 0, theta: 0, playing: false, tau: 0,
+  A: 1, f: 0.25, phi: 0, scale: 3,
+  shift: 0, shiftTarget: 0, target: null,
+  stepStart: 0, last: 0, drag: false
+};
+
+function clampTheta(st, a) {
+  if (!st.clamp) return a;
+  const [lo, hi] = st.clamp;
+  if (a >= lo && a <= hi) return a;
+  const d = (x, y) => Math.min(Math.abs(x - y), TAU - Math.abs(x - y));
+  return d(a, lo) < d(a, hi) ? lo : hi;
+}
+
+/** Advance time-dependent state by dt seconds. */
+function tick(dt) {
+  const st = STEPS[S.step];
+  if (S.playing && !S.drag) {
+    if (st.usesTau) S.tau += dt;
+    else { S.theta += (st.speed || 0.6) * dt; if (S.theta >= TAU) S.theta -= TAU; }
+  }
+  if (S.target !== null) {
+    const d = S.target - S.theta, v = 2.2 * dt;
+    if (Math.abs(d) <= v) { S.theta = S.target; S.target = null; } else S.theta += Math.sign(d) * v;
+  }
+  if (S.shift !== S.shiftTarget) {
+    const d = S.shiftTarget - S.shift, v = 0.7 * dt;
+    S.shift = Math.abs(d) <= v ? S.shiftTarget : S.shift + Math.sign(d) * v;
+  }
+}
+
+/* ---------- browser wiring ---------- */
+function init() {
+  const $ = id => document.getElementById(id);
+  const svg = $("scene"), ctrl = $("controls"), readout = $("readout");
+  let lastReadout = "", lastAngle = "";
+
+  const dots = $("dots");
+  dots.innerHTML = STEPS.map((st, i) => `<button class="dot" data-i="${i}" aria-label="Step ${i + 1}: ${st.title}">${i + 1}</button>`).join("");
+  dots.addEventListener("click", e => { const b = e.target.closest(".dot"); if (b) go(+b.dataset.i); });
+  $("prev").addEventListener("click", () => go(S.step - 1));
+  $("next").addEventListener("click", () => go(S.step + 1));
+
+  function slider(id, label, min, max, step, val, fmt) {
+    return `<label class="sl"><span>${label}<output id="o_${id}">${fmt(val)}</output></span>` +
+      `<input type="range" id="s_${id}" min="${min}" max="${max}" step="${step}" value="${val}"></label>`;
+  }
+
+  function playLabel() { return S.playing ? "❚❚ Pause" : "▶ Play"; }
+
+  function buildControls(st) {
+    const c = st.controls || [];
+    let h = "";
+    if (c.includes("play")) h += `<button class="btn" id="playBtn">${playLabel()}</button>`;
+    h += `<button class="btn" id="replayBtn">↺ Replay step</button>`;
+    if (c.includes("shift")) h += `<button class="btn" id="shiftBtn">Slide cosine a quarter turn →</button>`;
+    if (c.includes("special")) h += [0, 30, 45, 60, 90].map(a => `<button class="btn" data-ang="${a}">${a}°</button>`).join("");
+    const fmts = {
+      scale: v => (+v).toFixed(1), A: v => (+v).toFixed(2), f: v => (+v).toFixed(2) + " /s", phi: v => Math.round(+v) + "°"
+    };
+    if (c.includes("scale")) h += slider("scale", "Triangle size (hypotenuse)", 1.5, 5, 0.1, S.scale, fmts.scale);
+    if (c.includes("A")) h += slider("A", "Amplitude", 0.4, 1.4, 0.05, S.A, fmts.A);
+    if (c.includes("f")) h += slider("f", "Frequency (turns per second)", 0.15, 0.6, 0.01, S.f, fmts.f);
+    if (c.includes("phi")) h += slider("phi", "Phase (starting angle)", 0, 360, 5, Math.round(S.phi * 180 / PI), fmts.phi);
+    ctrl.innerHTML = h;
+
+    const pb = $("playBtn");
+    if (pb) pb.addEventListener("click", togglePlay);
+    $("replayBtn").addEventListener("click", () => go(S.step));
+    const sb = $("shiftBtn");
+    if (sb) sb.addEventListener("click", () => {
+      S.shiftTarget = S.shiftTarget ? 0 : 1;
+      sb.textContent = S.shiftTarget ? "← Slide it back" : "Slide cosine a quarter turn →";
+      sb.classList.toggle("on", !!S.shiftTarget);
+    });
+    ctrl.querySelectorAll("[data-ang]").forEach(b => b.addEventListener("click", () => {
+      pause(); S.target = (+b.dataset.ang) * PI / 180;
+    }));
+    ["scale", "A", "f", "phi"].forEach(k => {
+      const el = $("s_" + k);
+      if (!el) return;
+      el.addEventListener("input", () => {
+        const v = +el.value;
+        if (k === "phi") S.phi = v * PI / 180; else S[k] = v;
+        $("o_" + k).textContent = fmts[k](v);
+      });
+    });
+  }
+
+  /** Toggle play; returns false when the current step has no play control. */
+  function togglePlay() {
+    const st = STEPS[S.step];
+    if (!(st.controls || []).includes("play")) return false;
+    S.playing = !S.playing;
+    const pb = $("playBtn");
+    if (pb) pb.textContent = playLabel();
+    return true;
+  }
+
+  function pause() {
+    if (S.playing) togglePlay();
+  }
+
+  /** Steps with a draggable radius expose the diagram as a keyboard angle slider; the rest as an image. */
+  function setSvgRole(st) {
+    const valueAttrs = ["tabindex", "aria-valuemin", "aria-valuemax", "aria-valuenow", "aria-valuetext"];
+    lastAngle = "";
+    if (!st.center) {
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", st.title);
+      valueAttrs.forEach(a => svg.removeAttribute(a));
+      return;
+    }
+    const [lo, hi] = st.clamp || [0, TAU];
+    svg.setAttribute("role", "slider");
+    svg.setAttribute("aria-label", `${st.title}: angle θ. Up and down arrow keys turn the radius.`);
+    svg.setAttribute("tabindex", "0");
+    svg.setAttribute("aria-valuemin", String(Math.round(lo * 180 / PI)));
+    svg.setAttribute("aria-valuemax", String(Math.round(hi * 180 / PI)));
+  }
+
+  /** Keep the slider value in step with θ; frozen while spinning (after the first set) so screen readers are not flooded. */
+  function syncAngle() {
+    if (!STEPS[S.step].center || (S.playing && lastAngle)) return;
+    const v = deg(S.theta);
+    if (v === lastAngle) return;
+    lastAngle = v;
+    svg.setAttribute("aria-valuenow", String(parseInt(v, 10)));
+    svg.setAttribute("aria-valuetext", v);
+  }
+
+  function go(i) {
+    i = Math.max(0, Math.min(STEPS.length - 1, i));
+    const st = STEPS[i];
+    S.step = i;
+    S.theta = st.theta ?? 0.7;
+    S.playing = !!st.spin && !REDUCE;
+    S.target = null; S.shift = 0; S.shiftTarget = 0; S.tau = 0;
+    S.stepStart = performance.now();
+    $("count").textContent = `Step ${i + 1} of ${STEPS.length}`;
+    $("title").textContent = st.title;
+    $("eli5").innerHTML = st.eli5;
+    $("math").innerHTML = `<span class="k">The math version</span>` + st.math;
+    $("hint").textContent = st.hint || "";
+    svg.style.cursor = st.center ? "grab" : "default";
+    svg.style.touchAction = st.center ? "none" : "auto";
+    setSvgRole(st);
+    $("prev").disabled = i === 0;
+    $("next").disabled = i === STEPS.length - 1;
+    dots.querySelectorAll(".dot").forEach((d, k) => {
+      d.classList.toggle("cur", k === i); d.classList.toggle("done", k < i);
+      if (k === i) d.setAttribute("aria-current", "step"); else d.removeAttribute("aria-current");
+    });
+    buildControls(st);
+    lastReadout = "";
+    if (!st.readout) readout.innerHTML = "";
+    try { history.replaceState(null, "", "#step-" + (i + 1)); } catch (e) { /* file:// may refuse */ }
+  }
+
+  /* dragging the radius */
+  function toSvg(e) {
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    return pt.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  function setFromPointer(e) {
+    const st = STEPS[S.step], c = st.center, q = toSvg(e);
+    let a = Math.atan2(-(q.y - c.y), q.x - c.x);
+    if (a < 0) a += TAU;
+    S.theta = clampTheta(st, a);
+    S.target = null;
+  }
+  svg.addEventListener("pointerdown", e => {
+    const st = STEPS[S.step];
+    if (!st.center || e.button !== 0) return;
+    const q = toSvg(e), c = st.center;
+    if (Math.hypot(q.x - c.x, q.y - c.y) > c.r * 1.7) return;
+    S.drag = true;
+    pause();
+    svg.setPointerCapture(e.pointerId);
+    svg.style.cursor = "grabbing";
+    setFromPointer(e);
+  });
+  svg.addEventListener("pointermove", e => { if (S.drag) setFromPointer(e); });
+  const endDrag = () => { if (S.drag) { S.drag = false; svg.style.cursor = STEPS[S.step].center ? "grab" : "default"; } };
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+
+  /* keyboard turning of the radius while the diagram has focus */
+  svg.addEventListener("keydown", e => {
+    const st = STEPS[S.step];
+    if (!st.center || e.altKey || e.ctrlKey || e.metaKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    const d = (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? 15 : 1) * PI / 180;
+    pause();
+    S.target = null;
+    S.theta = clampTheta(st, ((S.theta + d) % TAU + TAU) % TAU);
+    e.preventDefault();
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target.matches && e.target.matches("input")) return;
+    if (e.key === "ArrowRight") { go(S.step + 1); e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { go(S.step - 1); e.preventDefault(); }
+    else if (e.key === " " && !(e.target.matches && e.target.matches("button, a")) && togglePlay()) e.preventDefault();
+  });
+
+  function frame(now) {
+    const dt = Math.min(0.05, Math.max(0, (now - S.last) / 1000));
+    S.last = now;
+    tick(dt);
+    const st = STEPS[S.step];
+    const p = REDUCE || !st.intro ? 1 : Math.min(1, (now - S.stepStart) / st.intro);
+    svg.innerHTML = st.draw(S, p, now);
+    syncAngle();
+    if (st.readout) {
+      const r = st.readout(S, p);
+      if (r !== lastReadout) { readout.innerHTML = r; lastReadout = r; }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  const m = /#step-(\d+)/.exec(location.hash || "");
+  go(m ? +m[1] - 1 : 0);
+  requestAnimationFrame(t => { S.last = t; frame(t); });
+}
+
+if (typeof document !== "undefined") init();
+</script>
+</body>
+</html>
