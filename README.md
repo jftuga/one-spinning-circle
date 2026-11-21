@@ -2,6 +2,8 @@
 
 An interactive, step-by-step explainer showing that the core of trigonometry (sine, cosine, tangent, SOH CAH TOA, the Pythagorean identity, radians, and the trig graphs) all come from one radius spinning inside a unit circle. Each step explains one idea in plain language, shows the formula underneath, and animates it.
 
+**Live demo:** [jftuga.github.io/one-spinning-circle](https://jftuga.github.io/one-spinning-circle/)
+
 Inspired by the video [All of Trigonometry Is One Spinning Circle](https://www.youtube.com/watch?v=wgNLxPpWz5M) by Lemma. The concepts follow the video's teaching order. The visuals, wording, and code are original.
 
 ## Disclaimer
