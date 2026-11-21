@@ -302,7 +302,8 @@ const STEPS = [
   theta: 0, spin: true, speed: 0.6, intro: 2200,
   center: { x: 180, y: 280, r: 120 }, controls: ["play"],
   eli5: `<p>In school, sine, cosine and tangent usually arrive as three separate squiggles to memorize. They come with <a href="#step-6" title="Step 6: Bigger triangles: SOH and CAH">the right-triangle ratios (SOH CAH TOA)</a>, a table of special angles, and a strange unit called the radian.</p>
-         <p><b>Watch the spinning dot.</b> The marker on all three graphs is reading the same dot on the same circle. By the last step you will have seen every one of those things come out of this one circle.</p>`,
+         <p><b>Watch the spinning dot.</b> The marker on all three graphs is reading the same dot on the same circle. By the last step you will have seen every one of those things come out of this one circle.</p>
+         <p>This is a preview. You don’t need to understand the curves yet. On each graph, moving left to right follows the angle through one full turn; the marker’s height shows the function’s value at that angle. Watch how the three values change together as the dot spins.</p>`,
   math: `One input angle θ, three outputs: <span class="c-sin">sin θ</span>, <span class="c-cos">cos θ</span>, and <span class="c-tan">tan θ</span>, each shown on its own graph.`,
   hint: "Press Next (or the right arrow key) to build it from nothing.",
   draw(S, p) {
@@ -374,9 +375,10 @@ const STEPS = [
 /* 4 */ {
   title: "Sine is how high, cosine is how far over",
   theta: 0.7, intro: 1600, center: { x: 500, y: 285, r: 190 }, controls: ["play"], speed: 0.5,
-  eli5: `<p>Drop a line straight down from the tip. Its height is called the <b class="c-sin">sine</b> of θ.</p>
+  eli5: `<p>Because our circle has radius 1, the tip’s vertical position is <span class="c-sin">sin θ</span> and its horizontal position is <span class="c-cos">cos θ</span>, both measured from the center.</p>
+         <p>Drop a line straight down from the tip. Its height is called the <b class="c-sin">sine</b> of θ.</p>
          <p>The distance across from the center is the <b class="c-cos">cosine</b> of θ.</p>
-         <p>That is the whole definition. Pointing right: height 0, across 1. Pointing straight up: they swap.</p>`,
+         <p>That is the whole definition. Pointing right: <span class="c-sin">sin θ = 0</span> and <span class="c-cos">cos θ = 1</span>. Pointing straight up: <span class="c-sin">sin θ = 1</span> and <span class="c-cos">cos θ = 0</span>.</p>`,
   math: `tip of the radius = (<span class="c-cos">cos θ</span>, <span class="c-sin">sin θ</span>)`,
   hint: "Drag the dot to the right and to the top to see the swap.",
   draw(S, p) {
@@ -435,36 +437,54 @@ const STEPS = [
   title: "Bigger triangles: SOH and CAH",
   theta: 0.62, intro: 1800, clamp: [0.09, 1.48], center: { x: 150, y: 330, r: 100 }, controls: ["scale"],
   eli5: `<p>Inside the circle hides a right triangle whose long side (the <b class="c-rad">hypotenuse</b>) is the radius, so it is 1.</p>
+         <p>The angle θ comes from the dot’s position; the hypotenuse sets the triangle’s size. The angle below the circle is shown in both radians and degrees. Multiply radians by 180 ÷ π to convert to degrees. <a href="#step-8">Step 8 explains radians.</a></p>
          <p>Blow the triangle up to any size while keeping the same angle and every side grows by the same factor. If the long side becomes 3, the height becomes 3 × sin θ. Divide the height by 3 and you get sin θ back.</p>
-         <p>That is all SOH and CAH say. It is not a new rule, just the unit circle scaled up.</p>`,
+         <p>For example, with θ = 0.62 radians (about 35.52°) and a hypotenuse of 3, sin θ ≈ 0.581035 and cos θ ≈ 0.813878. The <b class="c-sin">opposite</b> side is 3 × sin(0.62) ≈ <b class="c-sin">1.74</b>, and the <b class="c-cos">adjacent</b> side is 3 × cos(0.62) ≈ <b class="c-cos">2.44</b>, rounded to two decimal places.</p>
+         <p>That is all SOH and CAH say. It is not a new rule, just the unit circle scaled up.</p>
+         <p><b>Note: How do I find the angle?</b> If you know two sides of a right triangle, you can work backward to find θ:<br>
+         <span class="c-sin">θ = arcsin(opposite ÷ hypotenuse)</span><br>
+         <span class="c-cos">θ = arccos(adjacent ÷ hypotenuse)</span><br>
+         On a calculator, these are usually labeled sin⁻¹ and cos⁻¹. Here, −1 means the inverse function, not 1 divided by sine or cosine. Choose degree or radian mode depending on how you want the angle displayed.</p>`,
   math: `<span class="c-sin">sin θ</span> = ${frac('<span class="c-sin">opposite</span>', '<span class="c-rad">hypotenuse</span>')} (SOH)
          &nbsp;&nbsp; <span class="c-cos">cos θ</span> = ${frac('<span class="c-cos">adjacent</span>', '<span class="c-rad">hypotenuse</span>')} (CAH)`,
-  hint: "Use the size slider. Drag the dot on the small circle to change the angle.",
+  hint: "Drag the dot to change the angle. Change the triangle size to see that its side ratios stay the same.",
   draw(S, p) {
     const c = { x: 150, y: 330 }, R = 100, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
     const T = P(c, R, th);
     let s = base(c, R) + Pa(poly([[c.x, c.y], T, [T[0], c.y]]), "tri") + legs(c, R, th) + stick(c, R, th, { theta: false, halo: true });
     const [mx, my] = P(c, R / 2, th), [lx, ly] = P({ x: mx, y: my }, 16, th + HALF);
     s += Tx(lx, ly, "1", "lbl t-rad");
+    const degrees = num(th * 180 / PI);
+    s += Tx(20, 454, `θ ≈ ${num(th, 3)} radians ≈ ${degrees}°`, "small", "start");
+    s += Tx(20, 482, "degrees = radians × 180 ÷ π", "small", "start");
+    s += Tx(20, 510, `${num(th, 3)} × 180 ÷ π ≈ ${degrees}°`, "small", "start");
+    s += Tx(20, 538, "Displayed values are rounded.", "small", "start");
     const H = 1 + (S.scale - 1) * seg(p, 0.1, 1), u = 70;
     const A = [360, 470], B = [A[0] + H * u * cs, A[1]], Tp = [B[0], A[1] - H * u * sn];
     s += Pa(poly([A, B, Tp]), "tri") + wedge({ x: A[0], y: A[1] }, 40, 0, th);
     s += L(A[0], A[1], B[0], B[1], "cosl") + L(B[0], B[1], Tp[0], Tp[1], "sinl") + L(A[0], A[1], Tp[0], Tp[1], "rad");
     s += Pa(`M${n1(B[0] - 14)} ${n1(B[1])} L${n1(B[0] - 14)} ${n1(B[1] - 14)} L${n1(B[0])} ${n1(B[1] - 14)}`, "tick");
     const [wx, wy] = P({ x: A[0], y: A[1] }, 58, th / 2);
-    s += Tx(wx, wy, "θ", "lbl");
+    // Fit the full angle label inside when there is room, otherwise put it below.
+    const angleLeft = A[0] + 32 / Math.tan(th) + 8, angleRight = B[0] - 14;
+    if (angleRight - angleLeft >= 90) {
+      s += Tx((angleLeft + angleRight) / 2, A[1] - 22, `θ = ${degrees}°`, "small");
+    } else {
+      s += Tx(wx, wy, "θ", "lbl");
+      s += Tx(A[0], 538, `θ = ${degrees}°`, "small", "start");
+    }
     const M = [(A[0] + Tp[0]) / 2, (A[1] + Tp[1]) / 2];
     // keep the two-line "opposite" label clear of the θ label and the "adjacent" label on thin triangles
     const ox = Math.max(B[0] + 14, A[0] + 76), oy = Math.min((B[1] + Tp[1]) / 2, A[1] - 44);
     let lb = Tx(M[0] - 28 * sn, M[1] - 28 * cs, `hypotenuse ${H.toFixed(1)}`, "lbl t-rad", "end");
     lb += Tx(ox, oy, `opposite ${H.toFixed(1)} × sin θ`, "lbl t-sin", "start");
     lb += Tx(ox, oy + 26, `= ${num(H * sn)}`, "lbl t-sin", "start");
-    lb += Tx((A[0] + B[0]) / 2, A[1] + 30, `adjacent ${H.toFixed(1)} × cos θ = ${num(H * cs)}`, "lbl t-cos");
+    lb += Tx(A[0], A[1] + 30, `adjacent ${H.toFixed(1)} × cos θ = ${num(H * cs)}`, "lbl t-cos", "start");
     return s + G(seg(p, 0.75, 1), lb);
   },
   readout: S => {
     const H = S.scale, sn = Math.sin(S.theta), cs = Math.cos(S.theta);
-    return `<span class="k">Check it</span>` + row("angle θ", deg(S.theta)) +
+    return `<span class="k">Check it</span>` + row("angle θ", `${num(S.theta * 180 / PI)}°`) +
       row("opposite ÷ hypotenuse", `${num(H * sn)} ÷ ${H.toFixed(1)} = ${num(sn)}`, "c-sin") +
       row("adjacent ÷ hypotenuse", `${num(H * cs)} ÷ ${H.toFixed(1)} = ${num(cs)}`, "c-cos") +
       `<div class="note">The ratios do not change when you resize the triangle: they are sin θ and cos θ.</div>`;
