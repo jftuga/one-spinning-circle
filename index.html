@@ -61,6 +61,8 @@ svg#scene:focus-visible{outline:2px solid var(--sin);outline-offset:2px;border-r
 .count{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .panel h2{margin:4px 0 10px;font-size:1.3rem;line-height:1.25}
 .eli5 p{margin:0 0 10px}
+.eli5 a{color:var(--sin);text-decoration:underline}
+.eli5 a:focus-visible{outline:2px solid var(--sin);outline-offset:2px}
 .eli5 ul{margin:0 0 10px;padding-left:20px}
 .mathbox{margin:12px 0;padding:10px 12px;border-left:3px solid var(--rad);background:var(--bg);border-radius:0 8px 8px 0;font-size:.95rem}
 .mathbox .k,.readout .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px}
@@ -145,7 +147,7 @@ svg .t-sin{fill:var(--sin)} svg .t-cos{fill:var(--cos-t)} svg .t-tan{fill:var(--
 
     <aside class="panel" aria-live="polite">
       <div class="count" id="count"></div>
-      <h2 id="title"></h2>
+      <h2 id="title" tabindex="-1"></h2>
       <div class="eli5" id="eli5"></div>
       <div class="mathbox" id="math"></div>
       <div class="readout" id="readout" aria-live="off"></div>
@@ -299,7 +301,7 @@ const STEPS = [
   title: "Three things… or one?",
   theta: 0, spin: true, speed: 0.6, intro: 2200,
   center: { x: 180, y: 280, r: 120 }, controls: ["play"],
-  eli5: `<p>In school, sine, cosine and tangent usually arrive as three separate squiggles to memorize. They come with a triangle rule (SOH CAH TOA), a table of special angles, and a strange unit called the radian.</p>
+  eli5: `<p>In school, sine, cosine and tangent usually arrive as three separate squiggles to memorize. They come with <a href="#step-6" title="Step 6: Bigger triangles: SOH and CAH">the right-triangle ratios (SOH CAH TOA)</a>, a table of special angles, and a strange unit called the radian.</p>
          <p><b>Watch the spinning dot.</b> The marker on all three graphs is reading the same dot on the same circle. By the last step you will have seen every one of those things come out of this one circle.</p>`,
   math: `One input angle θ, three outputs: <span class="c-sin">sin θ</span>, <span class="c-cos">cos θ</span>, and <span class="c-tan">tan θ</span>, each shown on its own graph.`,
   hint: "Press Next (or the right arrow key) to build it from nothing.",
@@ -855,6 +857,13 @@ function init() {
   dots.addEventListener("click", e => { const b = e.target.closest(".dot"); if (b) go(+b.dataset.i); });
   $("prev").addEventListener("click", () => go(S.step - 1));
   $("next").addEventListener("click", () => go(S.step + 1));
+  $("eli5").addEventListener("click", e => {
+    const link = e.target.closest('a[href^="#step-"]');
+    if (!link || e.button !== 0 || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    go(Number(link.hash.slice(6)) - 1);
+    $("title").focus({ preventScroll: true });
+  });
 
   function slider(id, label, min, max, step, val, fmt) {
     return `<label class="sl"><span>${label}<output id="o_${id}">${fmt(val)}</output></span>` +
