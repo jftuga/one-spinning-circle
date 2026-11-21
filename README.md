@@ -20,13 +20,9 @@ Step 13 shows tangent as the height where the radius meets a vertical touching l
 
 ![Step 13: the radius at 132 degrees extended backward through the center to meet the tangent line, with the tangent graph and a readout showing tan θ = -1.12](screenshots/step-13-tangent.png)
 
-## Usage
+## Controls
 
-Open `index.html` in any modern browser. It has no dependencies, needs no build step or server, and works offline.
-
-To jump directly to a step, add `#step-N` to the URL, for example `index.html#step-8`.
-
-### Controls
+To jump directly to a step, add `#step-N` to the URL, for example [`#step-8`](https://jftuga.github.io/one-spinning-circle/#step-8).
 
 | Action | How |
 |--------|-----|
