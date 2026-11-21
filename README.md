@@ -4,6 +4,10 @@ An interactive, step-by-step explainer showing that the core of trigonometry (si
 
 Inspired by the video [All of Trigonometry Is One Spinning Circle](https://www.youtube.com/watch?v=wgNLxPpWz5M) by Lemma. The concepts follow the video's teaching order. The visuals, wording, and code are original.
 
+## Disclaimer
+
+This project was written entirely by an AI model (Claude Opus 5.5, high effort setting), with the author directing the work but not writing the code or explanations by hand. The math and teaching content have been checked as described under [Verification performed](#verification-performed), but have not been reviewed by a mathematics educator. It may contain errors in calculations, explanations, or terminology. It is provided as is, under the MIT License, for informal learning only. Do not rely on it as an authoritative reference; confirm anything important against a textbook or a qualified instructor.
+
 ## Screenshots
 
 Step 14 brings everything together: the spinning radius drives the sine, cosine, and tangent graphs at once.
@@ -18,15 +22,16 @@ Step 13 shows tangent as the height where the radius meets a vertical touching l
 
 | File | Purpose |
 |------|---------|
-| `one_spinning_circle.html` | The complete explainer: HTML, CSS, and JavaScript in one file |
+| `index.html` | The complete explainer: HTML, CSS, and JavaScript in one file |
 | `README.md` | This file |
+| `LICENSE` | MIT License |
 | `screenshots/` | PNG screenshots used in this README (headless Chrome, light mode, 2x) |
 
 ## Usage
 
-Open `one_spinning_circle.html` in any modern browser. It has no dependencies, needs no build step or server, and works offline.
+Open `index.html` in any modern browser. It has no dependencies, needs no build step or server, and works offline.
 
-To jump directly to a step, add `#step-N` to the URL, for example `one_spinning_circle.html#step-8`.
+To jump directly to a step, add `#step-N` to the URL, for example `index.html#step-8`.
 
 ### Controls
 
@@ -89,4 +94,3 @@ These gaps came up in the analysis of the video (`../All_of_Trigonometry_Is_One_
   - Space plays and pauses only on steps that have a Play button.
   - Up / Down turn the radius, respect each step's angle limits, and pause the spin.
 - The diagram's screen-reader slider attributes (role, range, and current angle) were checked on steps with and without a draggable radius.
-- Not yet verified in a real browser: dragging, sliders, buttons, and the attribution link.

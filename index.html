@@ -36,6 +36,12 @@ header p{margin:0;color:var(--muted);font-size:.95rem}
 .attrib{font-size:.9rem;color:var(--sin);text-decoration:none}
 .attrib:hover{text-decoration:underline}
 .attrib:focus-visible{outline:2px solid var(--sin);outline-offset:2px;border-radius:3px}
+button.attrib{font-family:inherit;background:none;border:0;padding:0;cursor:pointer}
+.disclaimer{max-width:min(420px,calc(100vw - 32px));padding:18px 20px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.disclaimer::backdrop{background:rgba(0,0,0,.35)}
+.disclaimer h2{margin:0 0 8px;font-size:1.05rem}
+.disclaimer p{margin:0 0 10px;font-size:.92rem;line-height:1.5}
+.disclaimer form{display:flex;justify-content:flex-end;margin:4px 0 0}
 .layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:20px;align-items:start}
 @media (max-width:920px){.layout{grid-template-columns:1fr}}
 .stage{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px}
@@ -120,7 +126,16 @@ svg .t-sin{fill:var(--sin)} svg .t-cos{fill:var(--cos-t)} svg .t-tan{fill:var(--
     <h1>One Spinning Circle</h1>
     <p>All of the core of trigonometry, built from a single radius, one step at a time.</p>
     <a class="attrib" href="https://www.youtube.com/watch?v=wgNLxPpWz5M" target="_blank" rel="noopener noreferrer" title="All of Trigonometry Is One Spinning Circle by Lemma">[Attribution]</a>
+    <button type="button" class="attrib" id="disclaimer-open" aria-haspopup="dialog" title="Click to read">[Disclaimer]</button>
+    <a class="attrib" href="https://github.com/jftuga/one-spinning-circle" target="_blank" rel="noopener noreferrer" title="Source code on GitHub">[Repo]</a>
   </header>
+
+  <dialog class="disclaimer" id="disclaimer" aria-labelledby="disclaimer-title">
+    <h2 id="disclaimer-title">Disclaimer</h2>
+    <p>This explainer was written entirely by an AI model (Claude Opus 5.5, high effort setting), directed by the author. It has been tested but not reviewed by a mathematics educator, and may contain errors in calculations, explanations, or terminology.</p>
+    <p>It is provided as is, under the MIT License, for informal learning only. Confirm anything important against a textbook or a qualified instructor.</p>
+    <form method="dialog"><button class="btn">Close</button></form>
+  </dialog>
 
   <div class="layout">
     <section class="stage" aria-label="Animated diagram">
@@ -997,8 +1012,16 @@ function init() {
     e.preventDefault();
   });
 
+  /* disclaimer popup: modal dialog; Escape, the Close button, or a click outside it closes it */
+  const disclaimer = document.getElementById("disclaimer");
+  document.getElementById("disclaimer-open").addEventListener("click", () => disclaimer.showModal());
+  disclaimer.addEventListener("click", e => {
+    const r = disclaimer.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) disclaimer.close();
+  });
+
   document.addEventListener("keydown", e => {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || disclaimer.open) return;
     if (e.target.matches && e.target.matches("input")) return;
     if (e.key === "ArrowRight") { go(S.step + 1); e.preventDefault(); }
     else if (e.key === "ArrowLeft") { go(S.step - 1); e.preventDefault(); }
