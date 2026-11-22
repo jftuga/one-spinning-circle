@@ -31,6 +31,7 @@ To jump directly to a step, add `#step-N` to the URL, for example [`#step-8`](ht
 | Change the angle by keyboard | Tab to the diagram, then Up / Down arrow keys turn the radius by 1°; hold Shift for 15° (same steps as dragging) |
 | Play / pause the spin | `Play` button or the Space key (on steps that spin) |
 | Restart a step's animation | `Replay step` button |
+| Rearrange the squares (step 7) | `Show how they fit` starts the animation at the selected angle; `Replay fit` repeats it; `Reset` restores the squares and unlocks angle dragging |
 | Step-specific controls | Size slider (step 6), cosine slide button (step 10), angle buttons (step 11), amplitude / frequency / phase sliders (step 12) |
 
 ## The 14 steps
@@ -46,11 +47,11 @@ To jump directly to a step, add `#step-N` to the URL, for example [`#step-8`](ht
 | 4 | Sine is how high, cosine is how far over | The definitions: tip = (cos θ, sin θ) |
 | 5 | Below and left count as negative | Sine and cosine are signed positions, not lengths |
 | 6 | Bigger triangles: SOH and CAH | Scaling the unit triangle gives opposite/hypotenuse and adjacent/hypotenuse |
-| 7 | A free fact: sin² + cos² = 1 | Pythagoras on the unit triangle, with a bar showing the two areas always sum to 1 |
+| 7 | A free fact: sin² + cos² = 1 | Pythagoras on the unit triangle, with an area bar and an optional animation that rearranges five pieces from the two smaller squares to fill the larger square |
 | 8 | A better ruler for angles: radians | Bending the radius around the edge; 1 rad ≈ 57.3°, π is a half turn |
 | 9 | Unroll the edge: the sine wave | The edge laid flat as a tape (true length) traces the sine wave |
 | 10 | Cosine is the same wave, a quarter turn ahead | Sliding cosine by π/2 lands it on sine |
-| 11 | The "table of angles", explained | Deriving the 30°, 45°, and 60° values from the picture |
+| 11 | The "table of angles", explained | Deriving the 30°, 45°, and 60° values from the picture, with degrees and radians shown beside exact sine and cosine values |
 | 12 | Why waves are everywhere: three knobs | Amplitude, frequency, and phase, with period = 1/frequency |
 | 13 | Tangent: where the stick hits a touching line | tan θ = sin θ / cos θ in all four quadrants, undefined at 90° and 270° |
 | 14 | All of it, in one picture | The full composite, plus a note on what it does not cover |
@@ -82,12 +83,15 @@ In a few places the video is imprecise or leaves gaps. These are deliberately ha
 - Each frame is redrawn from a small state object (angle, slider values, animation progress). Every step defines its own `draw` and `readout` functions in the `STEPS` array.
 - Light and dark themes follow the operating system's `prefers-color-scheme` setting.
 - When `prefers-reduced-motion` is set, intro animations are skipped and automatic spinning is off.
+- Step 7's rearrangement runs only when activated. With reduced motion enabled, activation shows the completed arrangement immediately.
 - Layout stacks into a single column below 920px width.
 - Color code used throughout: orange = radius, blue = sine, green = cosine, purple = tangent, gold = angle.
 
 </details>
 
 ## Verification performed
+
+Run `node --test tests/tangent.test.cjs` to check finite tangent values near 90° and 270°, undefined values at those angles, and safe diagram clipping.
 
 <details>
 <summary>Show verification details</summary>

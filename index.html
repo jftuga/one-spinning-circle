@@ -64,6 +64,10 @@ svg#scene:focus-visible{outline:2px solid var(--sin);outline-offset:2px;border-r
 .eli5 a{color:var(--sin);text-decoration:underline}
 .eli5 a:focus-visible{outline:2px solid var(--sin);outline-offset:2px}
 .eli5 ul{margin:0 0 10px;padding-left:20px}
+.eli5 details{margin:0 0 10px}
+.eli5 summary{cursor:pointer;font-weight:600}
+.eli5 summary:focus-visible{outline:2px solid var(--sin);outline-offset:2px}
+.eli5 details[open] summary{margin-bottom:10px}
 .mathbox{margin:12px 0;padding:10px 12px;border-left:3px solid var(--rad);background:var(--bg);border-radius:0 8px 8px 0;font-size:.95rem}
 .mathbox .k,.readout .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px}
 .readout{font-variant-numeric:tabular-nums;font-size:.95rem}
@@ -112,6 +116,9 @@ svg text{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;fill:v
 .sq-sin{fill:var(--sin);fill-opacity:.16;stroke:var(--sin);stroke-width:2}
 .sq-cos{fill:var(--cos);fill-opacity:.16;stroke:var(--cos);stroke-width:2}
 .sq-one{fill:var(--rad);fill-opacity:.14;stroke:var(--rad);stroke-width:2}
+.fit-piece{fill-opacity:.65;stroke:var(--surface);stroke-width:1.5;stroke-linejoin:round}
+.fit-outline{fill:none;stroke:var(--rad);stroke-width:2.5}
+.fit-status{flex-basis:100%;font-size:.88rem;color:var(--muted)}
 .bar-sin{fill:var(--sin)} .bar-cos{fill:var(--cos)}
 .mk-sin{fill:var(--sin)} .mk-cos{fill:var(--cos)} .mk-tan{fill:var(--tan)} .mk-rad{fill:var(--rad)}
 .startdot{fill:none;stroke:var(--muted);stroke-width:2;stroke-dasharray:3 3}
@@ -177,6 +184,8 @@ const num = (v, d = 2) => {
   return (v < 0 ? "−" : "") + Math.abs(v).toFixed(d);
 };
 const deg = t => Math.round(t * 180 / PI) + "°";
+// Allow only floating-point roundoff at odd quarter turns, not a visible angle range.
+const tangentUndefined = theta => Math.abs(Math.cos(theta)) < 1e-12;
 const ease = p => (p <= 0 ? 0 : p >= 1 ? 1 : p * p * (3 - 2 * p));
 /** Eased progress of p through the sub-interval [a, b]. */
 const seg = (p, a, b) => ease((p - a) / (b - a));
@@ -295,6 +304,59 @@ function legLabels(c, R, th) {
 const row = (k, v, cls = "") => `<div class="row"><span class="${cls}">${k}</span><span>${v}</span></div>`;
 const frac = (a, b) => `<span class="frac"><span>${a}</span><span>${b}</span></span>`;
 
+/** Clip a convex polygon to one side of a line through the origin. */
+function fitClip(points, axis, sign) {
+  const out = [], d = p => sign * (p[0] * axis[0] + p[1] * axis[1]);
+  points.forEach((a, i) => {
+    const b = points[(i + 1) % points.length], da = d(a), db = d(b);
+    if (da >= -1e-9) out.push(a);
+    if ((da > 1e-9 && db < -1e-9) || (da < -1e-9 && db > 1e-9)) {
+      const t = da / (da - db);
+      out.push([a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])]);
+    }
+  });
+  return out;
+}
+
+/** Five rigid pieces: cut the larger leg square parallel to the hypotenuse
+ * and its perpendicular through the square's center. Translate the four
+ * cut vertices to the opposite corners of the hypotenuse square. The
+ * remaining central hole is exactly the smaller leg square. */
+function fitPieces(th) {
+  const R = 160, cs = Math.cos(th), sn = Math.sin(th);
+  const u = [cs, -sn], v = [-sn, -cs];
+  const target = [300 + R * (cs - sn) / 2, 300 - R * (sn + cs) / 2];
+  const squares = [
+    { side: R * cs, center: [300 + R * cs / 2, 300 + R * cs / 2], cls: "sq-cos" },
+    { side: R * sn, center: [300 + R * cs + R * sn / 2, 300 - R * sn / 2], cls: "sq-sin" }
+  ].sort((a, b) => b.side - a.side);
+  const [large, small] = squares, h = large.side / 2;
+  const square = [[-h, -h], [h, -h], [h, h], [-h, h]];
+  const pieces = [];
+  for (const su of [-1, 1]) for (const sv of [-1, 1]) {
+    const local = fitClip(fitClip(square, u, su), v, sv);
+    pieces.push({
+      points: local.map(p => [p[0] + large.center[0], p[1] + large.center[1]]),
+      delta: target.map((t, k) => t - large.center[k] - R / 2 * (su * u[k] + sv * v[k])),
+      cls: large.cls
+    });
+  }
+  const b = small.side / 2;
+  pieces.push({
+    points: [[-b, -b], [b, -b], [b, b], [-b, b]].map(p => [p[0] + small.center[0], p[1] + small.center[1]]),
+    delta: target.map((t, k) => t - small.center[k]), cls: small.cls
+  });
+  return pieces;
+}
+
+function drawFit(th, elapsed) {
+  // Reveal cuts first, then move one piece at a time so each is easy to follow.
+  return fitPieces(th).map((piece, i) => {
+    const t = seg(elapsed, 1 + i * 1.1, 2.1 + i * 1.1);
+    return Pa(poly(piece.points.map(p => [p[0] + t * piece.delta[0], p[1] + t * piece.delta[1]])), piece.cls + " fit-piece");
+  }).join("");
+}
+
 /* ---------- the steps ---------- */
 const STEPS = [
 /* 1 */ {
@@ -323,7 +385,7 @@ const STEPS = [
   },
   readout: S => `<span class="k">Right now</span>` +
     row("angle", deg(S.theta)) + row("sin θ", num(Math.sin(S.theta)), "c-sin") + row("cos θ", num(Math.cos(S.theta)), "c-cos") +
-    row("tan θ", Math.abs(Math.cos(S.theta)) < 0.01 ? "undefined" : num(Math.tan(S.theta)), "c-tan")
+    row("tan θ", tangentUndefined(S.theta) ? "undefined" : num(Math.tan(S.theta)), "c-tan")
 },
 
 /* 2 */ {
@@ -378,6 +440,7 @@ const STEPS = [
   eli5: `<p>Because our circle has radius 1, the tip’s vertical position is <span class="c-sin">sin θ</span> and its horizontal position is <span class="c-cos">cos θ</span>, both measured from the center.</p>
          <p>Drop a line straight down from the tip. Its height is called the <b class="c-sin">sine</b> of θ.</p>
          <p>The distance across from the center is the <b class="c-cos">cosine</b> of θ.</p>
+         <p>To remember: <b>Sine is height; cosine is right.</b></p>
          <p>That is the whole definition. Pointing right: <span class="c-sin">sin θ = 0</span> and <span class="c-cos">cos θ = 1</span>. Pointing straight up: <span class="c-sin">sin θ = 1</span> and <span class="c-cos">cos θ = 0</span>.</p>`,
   math: `tip of the radius = (<span class="c-cos">cos θ</span>, <span class="c-sin">sin θ</span>)`,
   hint: "Drag the dot to the right and to the top to see the swap.",
@@ -418,6 +481,11 @@ const STEPS = [
     [[-1, "−1"], [0, "0"], [1, "1"]].forEach(([v, t]) => { s += L(xm - 7, c.y - v * R, xm + 7, c.y - v * R, "tick") + Tx(xm + 14, c.y - v * R, t, "small", "start"); });
     s += L(tx, ty, tx, ym, "proj") + L(tx, ty, xm, ty, "proj");
     s += legs(c, R, th) + stick(c, R, th, { theta: false });
+    if (th > 0.15) {
+      // Keep θ close to the angle wedge, inside the ring of quadrant signs.
+      const [lx, ly] = P(c, 56, th / 2);
+      s += Tx(lx, ly, "θ", "lbl");
+    }
     s += C(tx, ym, 8, "mk-cos") + C(xm, ty, 8, "mk-sin");
     const X = 720;
     s += Tx(X, 150, `sin θ = ${num(sn)}`, "big t-sin", "start");
@@ -437,14 +505,15 @@ const STEPS = [
   title: "Bigger triangles: SOH and CAH",
   theta: 0.62, intro: 1800, clamp: [0.09, 1.48], center: { x: 150, y: 330, r: 100 }, controls: ["scale"],
   eli5: `<p>Inside the circle hides a right triangle whose long side (the <b class="c-rad">hypotenuse</b>) is the radius, so it is 1.</p>
-         <p>The angle θ comes from the dot’s position; the hypotenuse sets the triangle’s size. The angle below the circle is shown in both radians and degrees. Multiply radians by 180 ÷ π to convert to degrees. <a href="#step-8">Step 8 explains radians.</a></p>
+         <p>The dot’s position sets the angle θ; the hypotenuse sets the triangle’s size. <a href="#step-8">Step 8 explains radians.</a></p>
          <p>Blow the triangle up to any size while keeping the same angle and every side grows by the same factor. If the long side becomes 3, the height becomes 3 × sin θ. Divide the height by 3 and you get sin θ back.</p>
-         <p>For example, with θ = 0.62 radians (about 35.52°) and a hypotenuse of 3, sin θ ≈ 0.581035 and cos θ ≈ 0.813878. The <b class="c-sin">opposite</b> side is 3 × sin(0.62) ≈ <b class="c-sin">1.74</b>, and the <b class="c-cos">adjacent</b> side is 3 × cos(0.62) ≈ <b class="c-cos">2.44</b>, rounded to two decimal places.</p>
+         <p>For example, with θ = 0.62 radians (about 35.52°) and a hypotenuse of 3, the <b class="c-sin">opposite</b> side is 3 × sin(0.62) ≈ <b class="c-sin">1.74</b>, and the <b class="c-cos">adjacent</b> side is 3 × cos(0.62) ≈ <b class="c-cos">2.44</b>, rounded to two decimal places.</p>
          <p>That is all SOH and CAH say. It is not a new rule, just the unit circle scaled up.</p>
-         <p><b>Note: How do I find the angle?</b> If you know two sides of a right triangle, you can work backward to find θ:<br>
+         <details><summary>How do I find the angle?</summary>
+         <p>If you know two sides of a right triangle, you can work backward to find θ:<br>
          <span class="c-sin">θ = arcsin(opposite ÷ hypotenuse)</span><br>
          <span class="c-cos">θ = arccos(adjacent ÷ hypotenuse)</span><br>
-         On a calculator, these are usually labeled sin⁻¹ and cos⁻¹. Here, −1 means the inverse function, not 1 divided by sine or cosine. Choose degree or radian mode depending on how you want the angle displayed.</p>`,
+         On a calculator, these are usually labeled sin⁻¹ and cos⁻¹. Here, −1 means the inverse function, not 1 divided by sine or cosine. Choose degree or radian mode depending on how you want the angle displayed.</p></details>`,
   math: `<span class="c-sin">sin θ</span> = ${frac('<span class="c-sin">opposite</span>', '<span class="c-rad">hypotenuse</span>')} (SOH)
          &nbsp;&nbsp; <span class="c-cos">cos θ</span> = ${frac('<span class="c-cos">adjacent</span>', '<span class="c-rad">hypotenuse</span>')} (CAH)`,
   hint: "Drag the dot to change the angle. Change the triangle size to see that its side ratios stay the same.",
@@ -493,23 +562,30 @@ const STEPS = [
 
 /* 7 */ {
   title: "A free fact: sin² + cos² = 1",
-  theta: 0.66, intro: 2600, clamp: [0.12, 1.45], center: { x: 300, y: 300, r: 160 }, controls: [],
+  theta: 0.66, intro: 2600, clamp: [0.12, 1.45], center: { x: 300, y: 300, r: 160 }, controls: ["fit"],
   eli5: `<p>Build a square on each side of the triangle. Pythagoras' theorem (a proven fact about every right triangle) says the two small squares together have exactly the same area as the big one.</p>
          <p>The big square sits on the radius, whose length is 1, so its area is 1. That means sin²θ + cos²θ = 1 for every angle, which is just another way of saying <b>the tip always stays on the circle</b>.</p>
-         <p>The bar on the right adds the two small areas so you can watch them always fill exactly 1.</p>`,
+         <p>The bar on the right adds the two small areas so you can watch them always fill exactly 1.</p>
+         <p>Choose <b>Show how they fit</b> to cut the larger of the two small squares into four pieces. Those pieces and the smaller square slide into the big square without changing size. Reset to try another angle.</p>`,
   math: `(<span class="c-sin">sin θ</span>)² + (<span class="c-cos">cos θ</span>)² = <span class="c-rad">1</span>² = 1`,
   hint: "Drag the dot: the two areas trade off but always add up to 1.",
-  draw(S, p) {
+  draw(S, p, now) {
     const c = { x: 300, y: 300 }, R = 160, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
+    const fitting = S.fitStart !== null;
+    if (fitting) p = 1;
     const O = [c.x, c.y], T = P(c, R, th), F = [T[0], c.y], nx = -R * sn, ny = -R * cs;
     let s = base(c, R);
     const sqC = poly([O, F, [F[0], F[1] + R * cs], [O[0], O[1] + R * cs]]);
     const sqS = poly([F, T, [T[0] + R * sn, T[1]], [F[0] + R * sn, F[1]]]);
     const sq1 = poly([O, T, [T[0] + nx, T[1] + ny], [O[0] + nx, O[1] + ny]]);
-    s += G(seg(p, 0, 0.3), Pa(sqC, "sq-cos") + Tx((O[0] + F[0]) / 2, c.y + R * cs / 2, "cos²θ", R * cs > 70 ? "lbl t-cos" : "small t-cos"));
-    s += G(seg(p, 0.2, 0.5), Pa(sqS, "sq-sin") + Tx(F[0] + R * sn / 2, (F[1] + T[1]) / 2, "sin²θ", R * sn > 70 ? "lbl t-sin" : "small t-sin"));
-    s += G(seg(p, 0.4, 0.7), Pa(sq1, "sq-one") + Tx((O[0] + T[0]) / 2 + nx / 2, (O[1] + T[1]) / 2 + ny / 2, "1", "big t-rad"));
+    s += G(fitting ? 0.12 : seg(p, 0, 0.3), Pa(sqC, "sq-cos") + Tx((O[0] + F[0]) / 2, c.y + R * cs / 2, "cos²θ", R * cs > 70 ? "lbl t-cos" : "small t-cos"));
+    s += G(fitting ? 0.12 : seg(p, 0.2, 0.5), Pa(sqS, "sq-sin") + Tx(F[0] + R * sn / 2, (F[1] + T[1]) / 2, "sin²θ", R * sn > 70 ? "lbl t-sin" : "small t-sin"));
+    s += G(seg(p, 0.4, 0.7), Pa(sq1, "sq-one") + (fitting ? "" : Tx((O[0] + T[0]) / 2 + nx / 2, (O[1] + T[1]) / 2 + ny / 2, "1", "big t-rad")));
     s += Pa(poly([O, T, F]), "tri") + legs(c, R, th) + stick(c, R, th, { theta: false });
+    if (fitting) {
+      s += drawFit(th, REDUCE ? 7 : (now - S.fitStart) / 1000);
+      s += Pa(sq1, "fit-outline");
+    }
     // stacked bar of the two areas
     const bx = 610, by = 250, W = 340, h = 42, wc = W * cs * cs;
     let b = Pa(`M${bx} ${by} h${n1(wc)} v${h} h${n1(-wc)} Z`, "bar-cos") + Pa(`M${n1(bx + wc)} ${by} h${n1(W - wc)} v${h} h${n1(-(W - wc))} Z`, "bar-sin");
@@ -534,6 +610,7 @@ const STEPS = [
   theta: 1, intro: 9000, center: { x: 470, y: 290, r: 170 }, controls: [],
   eli5: `<p><b>Degrees</b> chop a full turn into 360 slices. The number 360 is a convention handed down from ancient astronomy. It does not come from the circle itself.</p>
          <p>A more natural ruler is the <b>radius itself</b>. Bend one radius around the edge: the angle it covers is <b>1 radian</b>, about 57.3°. A little more than 3 radii (exactly π ≈ 3.14) gets you halfway round, and 2π ≈ 6.28 radii gets you all the way.</p>
+         <p>A circle’s circumference is 2π times its radius, so exactly 2π radius-lengths fit around the edge.</p>
          <p>So an angle in radians simply says <b>how many radii the tip has traveled</b> along the edge.</p>`,
   math: `arc length = radius × θ (θ in radians). On the unit circle the radius is 1, so arc length = θ.<br>180° = π rad, so 1 rad = 180°/π ≈ 57.3°`,
   hint: "After the animation, drag the dot: the thick orange arc is the distance traveled.",
@@ -591,7 +668,8 @@ const STEPS = [
   title: "Unroll the edge: the sine wave",
   theta: 0, intro: 2600, spin: true, speed: 0.8, center: { x: 160, y: 290, r: 90 }, controls: ["play"],
   eli5: `<p>Peel the circle's edge off and lay it flat like a measuring tape. The tape is exactly as long as the edge, so every spot on it is an angle: 0, π/2 (a quarter turn), π, 3π/2, 2π.</p>
-         <p>Spin the stick and carry the tip's height across to the tape. The trail it leaves is the <b class="c-sin">sine wave</b>. It is not a new shape to memorize. It is the height of a dot going round a circle, unrolled.</p>`,
+         <p>Spin the stick and carry the tip's height across to the tape. The trail it leaves is the <b class="c-sin">sine wave</b>. It is not a new shape to memorize. It is the height of a dot going round a circle, unrolled.</p>
+         <p>Across the graph is the angle θ, measured in radians. Up and down is sin θ, the tip’s height relative to the center. One full turn draws one complete wave; each additional turn repeats the same pattern.</p>`,
   math: `y = <span class="c-sin">sin θ</span>: 0 at 0, 1 at π/2, 0 at π, −1 at 3π/2, 0 at 2π`,
   hint: "Pause and drag the dot to place it anywhere.",
   draw(S, p) {
@@ -620,6 +698,7 @@ const STEPS = [
   theta: 0, spin: true, speed: 0.8, center: { x: 160, y: 290, r: 90 }, controls: ["play", "shift"],
   eli5: `<p>Do the same thing with the across distance (left of center counts as negative) and plot it as a height. You get the <b class="c-cos">cosine wave</b>.</p>
          <p>Press <b>Slide cosine</b>: shift the cosine wave a quarter turn to the right and it lands exactly on top of sine. Cosine reaches every value a quarter turn <i>earlier</i> than sine does.</p>
+         <p>At θ = 0, cosine is already at its maximum of 1. Sine reaches that maximum a quarter turn later, at π/2 radians (90°). Sliding cosine to the right by that amount makes the peaks and valleys line up.</p>
          <p>Sine and cosine are one circle, seen from two sides.</p>`,
   math: `<span class="c-cos">cos θ</span> = <span class="c-sin">sin(θ + π/2)</span> &nbsp;and&nbsp; <span class="c-sin">sin θ</span> = <span class="c-cos">cos(θ − π/2)</span>`,
   hint: "Use the slide button, then slide it back.",
@@ -656,8 +735,8 @@ const STEPS = [
   title: "The “table of angles”, explained",
   theta: 0.3, clamp: [0, HALF], center: { x: 300, y: 310, r: 170 }, controls: ["special"],
   eli5: `<p>The values you were asked to memorize come straight from the picture.</p>
-         <p><b>30°:</b> mirror the triangle below the line. You get a triangle with all three sides equal, so the height is half of 1: sin 30° = ½.</p>
-         <p><b>60°:</b> the same trick sideways gives cos 60° = ½.</p>
+         <p><b>30°:</b> mirror the triangle below the line. Mirroring doubles the angle at the center to 60°. The two sloping sides are radii, so they are equal. The other two angles must also be 60°, making the triangle equilateral. Its full vertical side is 1, so each half is ½: sin 30° = ½.</p>
+         <p><b>60°:</b> join the tip to the circle’s rightmost point. The two radii form a 60° angle, making an equilateral triangle. The vertical line splits its base of 1 in half, so cos 60° = ½.</p>
          <p><b>45°:</b> height and across are equal. Pythagoras gives s² + s² = 1, so s = √½ = √2/2 ≈ 0.71.</p>
          <p>The missing partners then follow from sin² + cos² = 1.</p>`,
   math: `sin 30° = ½, cos 30° = √3/2 &nbsp;•&nbsp; sin 45° = cos 45° = √2/2 &nbsp;•&nbsp; sin 60° = √3/2, cos 60° = ½`,
@@ -665,14 +744,17 @@ const STEPS = [
   draw(S) {
     const c = { x: 300, y: 310 }, R = 200, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
     const O = [c.x, c.y], T = P(c, R, th), dg = th * 180 / PI;
-    const SP = [[0, "0", "1"], [30, "½", "√3/2"], [45, "√2/2", "√2/2"], [60, "√3/2", "½"], [90, "1", "0"]];
+    const SP = [[0, "0", "1", "0"], [30, "½", "√3/2", "π/6"], [45, "√2/2", "√2/2", "π/4"], [60, "√3/2", "½", "π/3"], [90, "1", "0", "π/2"]];
     const near = SP.find(r => Math.abs(r[0] - dg) < 0.6);
     let s = base(c, R);
     let lines = ["Pick an angle above, or drag the dot."];
     if (near && near[0] === 30) {
       const T2 = [T[0], c.y + R * sn];
       s += Pa(poly([O, T, T2]), "hl") + L(O[0], O[1], T2[0], T2[1], "rad dash") + L(T[0], T[1], T2[0], T2[1], "sinl dash");
-      s += Tx(T[0] + 14, c.y + R * sn / 2 + 30, "1", "lbl t-sin", "start");
+      const bx = T[0] + 36;
+      s += L(bx, T[1], bx, T2[1], "tick") + L(bx - 7, T[1], bx + 7, T[1], "tick") + L(bx - 7, T2[1], bx + 7, T2[1], "tick");
+      s += Tx(bx + 14, c.y, "1", "lbl t-sin", "start");
+      s += Tx(T[0] - 14, (T[1] + c.y) / 2, "½", "lbl t-sin", "end") + Tx(T[0] - 14, (T2[1] + c.y) / 2, "½", "lbl t-sin", "end");
       lines = ["Mirror the triangle below the line.", "All three sides are 1 (equilateral),", "so the height is half: sin 30° = ½.", "Then cos 30° = √(1 − ¼) = √3/2."];
     } else if (near && near[0] === 60) {
       const A = [c.x + R, c.y];
@@ -692,11 +774,11 @@ const STEPS = [
     s += Pa(poly([O, T, [T[0], c.y]]), "tri") + legs(c, R, th) + stick(c, R, th);
     // table
     const tx = 600;
-    s += Tx(tx + 40, 70, "angle", "small") + Tx(tx + 170, 70, "sin", "lbl t-sin") + Tx(tx + 300, 70, "cos", "lbl t-cos");
+    s += Tx(tx + 35, 70, "Degrees", "small") + Tx(tx + 135, 70, "Radians", "small") + Tx(tx + 235, 70, "sin", "lbl t-sin") + Tx(tx + 330, 70, "cos", "lbl t-cos");
     SP.forEach((r, i) => {
       const y = 112 + i * 46;
       if (near && near[0] === r[0]) s += Pa(`M${tx - 10} ${y - 21} h380 v42 h-380 Z`, "hl");
-      s += Tx(tx + 40, y, r[0] + "°", "lbl") + Tx(tx + 170, y, r[1], "lbl t-sin") + Tx(tx + 300, y, r[2], "lbl t-cos");
+      s += Tx(tx + 35, y, r[0] + "°", "lbl") + Tx(tx + 135, y, r[3], "lbl") + Tx(tx + 235, y, r[1], "lbl t-sin") + Tx(tx + 330, y, r[2], "lbl t-cos");
     });
     lines.forEach((t, i) => { s += Tx(tx - 10, 380 + i * 30, t, i === 0 ? "lbl" : "lbl t-mut", "start"); });
     return s;
@@ -709,11 +791,12 @@ const STEPS = [
 /* 12 */ {
   title: "Why waves are everywhere: three knobs",
   usesTau: true, spin: true, controls: ["play", "A", "f", "phi"],
-  eli5: `<p>Watch the dot from the side and it just bobs up and down. Record that bobbing over time and you get a sine wave. Anything that bobs smoothly and steadily, like a weight on a spring or a <i>gently</i> swinging pendulum, follows this pattern. Complicated signals such as sound can be built by adding many of these waves together.</p>
+  eli5: `<p>Earlier graphs plotted height against angle. Here we plot height against time as the dot spins.</p>
+         <p>Watch the dot from the side and it just bobs up and down. Record that bobbing over time and you get a sine wave. Many repeating motions, such as an ideal weight on a spring or a <i>gently</i> swinging pendulum, follow this pattern. Complicated signals such as sound can be built by adding many of these waves together.</p>
          <p>Three knobs set a wave:</p>
-         <ul><li><b>Amplitude</b>: how big the circle is (how tall the wave).</li>
-         <li><b>Frequency</b>: how fast it spins (turns per second). One full turn takes one <b>period</b> = 1 ÷ frequency.</li>
-         <li><b>Phase</b>: where the dot starts (the dashed wave starts at 0).</li></ul>`,
+         <ul><li><b>Amplitude</b>: the distance from the middle line to a peak, set by the circle’s radius. The full distance from bottom to top is 2 × amplitude.</li>
+         <li><b>Frequency</b>: complete cycles per second, or how fast the dot spins. One full turn takes one <b>period</b> = 1 ÷ frequency. For example, 0.25 cycles per second means one cycle every 4 seconds.</li>
+         <li><b>Phase</b>: the starting angle, or head start within a cycle. Changing it shifts the wave without changing its height or frequency. The dashed wave shows a starting angle of 0.</li></ul>`,
   math: `y(t) = A · sin(2π f t + φ) &nbsp;&nbsp; period T = 1 / f`,
   hint: "Move the sliders. The newest point is on the left; older ones scroll right.",
   draw(S) {
@@ -746,15 +829,16 @@ const STEPS = [
   title: "Tangent: where the stick hits a touching line",
   theta: 0.7, intro: 1800, speed: 0.5, center: { x: 230, y: 290, r: 120 }, controls: ["play"],
   eli5: `<p>Draw a vertical line that just touches the circle on the right. A line that touches a circle like this is called a <b class="c-tan">tangent line</b>, which is where the name comes from.</p>
-         <p>Extend the stick until it hits that line. The height where it lands is <b class="c-tan">tan θ</b>. Blow the inner triangle up until its bottom is 1 and its height becomes sin θ ÷ cos θ, the same as opposite ÷ adjacent (TOA).</p>
-         <p>Near a quarter turn the stick runs almost parallel to the line, so the meeting point races off toward infinity. Exactly at 90° they never meet, so tan 90° is undefined. When the stick points left, extend it <i>backward</i> through the center to reach the line.</p>`,
+         <p>Extend the stick until it hits that line. The height where it lands is <b class="c-tan">tan θ</b>.</p>
+         <p>In the first quarter of the circle, the small triangle has a base of cos θ and a height of sin θ. The larger triangle reaches the tangent line, where its base is 1. To make the base 1, divide both sides by cos θ. Its height becomes sin θ ÷ cos θ, which is tan θ, the same as opposite ÷ adjacent (TOA).</p>
+         <p>Near a quarter turn the stick runs almost parallel to the line, so the meeting point races off toward infinity. Exactly at 90° or 270°, they never meet, so tangent is undefined. When the stick points left, extend it <i>backward</i> through the center to reach the line.</p>`,
   math: `<span class="c-tan">tan θ</span> = ${frac('<span class="c-sin">opposite</span>', '<span class="c-cos">adjacent</span>')} = ${frac('<span class="c-sin">sin θ</span>', '<span class="c-cos">cos θ</span>')} &nbsp; (undefined when cos θ = 0: at π/2 and 3π/2)`,
   hint: "Drag the dot all the way around, including into the left half.",
   draw(S, p) {
     const c = { x: 230, y: 290 }, R = 120, X = c.x + R, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
     const T = P(c, R, th), top = 18, bot = 550;
     let s = base(c, R) + G(seg(p, 0, 0.3), L(X, top, X, bot, "tanline") + Tx(X - 8, bot - 10, "tangent line", "small t-tan", "end"));
-    const und = Math.abs(cs) < 0.02, ext = seg(p, 0.3, 0.8);
+    const und = tangentUndefined(th), ext = seg(p, 0.3, 0.8);
     if (!und && ext > 0) {
       const Y = c.y - R * sn / cs, Yc = Math.max(top, Math.min(bot, Y)), clipped = Yc !== Y;
       const t = clipped ? (c.y - Yc) / (R * sn) : 1 / cs, E = [c.x + t * R * cs, c.y - t * R * sn];
@@ -783,21 +867,21 @@ const STEPS = [
     return s + G(seg(p, 0.5, 1), g);
   },
   readout: S => {
-    const sn = Math.sin(S.theta), cs = Math.cos(S.theta), und = Math.abs(cs) < 0.02;
+    const sn = Math.sin(S.theta), cs = Math.cos(S.theta), und = tangentUndefined(S.theta);
     return `<span class="k">Right now</span>` + row("angle θ", deg(S.theta)) +
       row("sin θ", num(sn), "c-sin") + row("cos θ", num(cs), "c-cos") +
       row("tan θ = sin ÷ cos", und ? "undefined" : num(sn / cs), "c-tan") +
-      (cs < -0.02 ? `<div class="note">The stick points left, so extend it backward through the center to reach the line.</div>` : "");
+      (cs < 0 && !und ? `<div class="note">The stick points left, so extend it backward through the center to reach the line.</div>` : "");
   }
 },
 
 /* 14 */ {
   title: "All of it, in one picture",
   theta: 0, spin: true, speed: 0.5, center: { x: 180, y: 290, r: 100 }, controls: ["play"],
-  eli5: `<ul><li><b class="c-sin">Sine</b> is how high the tip is.</li>
+  eli5: `<ul><li><b class="c-sin">Sine</b> is how high the tip is relative to the center; below counts as negative.</li>
          <li><b class="c-cos">Cosine</b> is how far over it is (left counts as negative).</li>
-         <li><b class="c-tan">Tangent</b> is where the stick meets the touching line.</li>
-         <li><b class="c-rad">Radians</b> measure how far the tip has traveled along the edge.</li>
+         <li><b class="c-tan">Tangent</b> is the height where the extended stick meets the touching line, when they intersect.</li>
+         <li><b class="c-rad">Radians</b> measure distance traveled along the edge in radius-lengths.</li>
          <li>The <b>graphs</b> are the circle, unrolled.</li></ul>
          <p>This picture is the core of trigonometry, not every corner of it. Topics such as the law of cosines for non-right triangles, the inverse functions, and the angle-addition formulas are built on top of it.</p>`,
   math: `tip = (<span class="c-cos">cos θ</span>, <span class="c-sin">sin θ</span>), &nbsp; <span class="c-tan">tan θ</span> = sin θ / cos θ, &nbsp; sin²θ + cos²θ = 1, &nbsp; arc = θ`,
@@ -806,7 +890,7 @@ const STEPS = [
     const c = { x: 180, y: 290 }, R = 100, X = c.x + R, th = S.theta, sn = Math.sin(th), cs = Math.cos(th);
     const T = P(c, R, th), top = 40, bot = 540;
     let s = base(c, R) + L(X, top, X, bot, "tanline");
-    if (Math.abs(cs) > 0.02) {
+    if (!tangentUndefined(th)) {
       const Y = c.y - R * sn / cs, Yc = Math.max(top, Math.min(bot, Y));
       const t = Yc !== Y ? (c.y - Yc) / (R * sn) : 1 / cs;
       s += L(T[0], T[1], c.x + t * R * cs, c.y - t * R * sn, "rad dash") + L(X, c.y, X, Yc, "tanl");
@@ -817,7 +901,7 @@ const STEPS = [
     [[Math.sin, "sin"], [Math.cos, "cos"], [Math.tan, "tan"]].forEach(([fn, k]) => {
       s += curve(x0, c.y, w, R, fn, 0, TAU, k + "c faintc", clip) + curve(x0, c.y, w, R, fn, 0, th, k + "c", clip);
       const v = fn(th);
-      if (isFinite(v) && Math.abs(v) <= clip && !(k === "tan" && Math.abs(cs) < 0.02)) s += C(x0 + w * th / TAU, c.y - R * v, 6, "mk-" + k);
+      if (isFinite(v) && Math.abs(v) <= clip && !(k === "tan" && tangentUndefined(th))) s += C(x0 + w * th / TAU, c.y - R * v, 6, "mk-" + k);
     });
     const gx = x0 + w * th / TAU;
     s += L(gx, top, gx, bot, "cursor");
@@ -828,7 +912,7 @@ const STEPS = [
     const sn = Math.sin(S.theta), cs = Math.cos(S.theta);
     return `<span class="k">Right now</span>` + row("angle (radians = arc traveled)", num(S.theta), "c-rad") +
       row("sin θ", num(sn), "c-sin") + row("cos θ", num(cs), "c-cos") +
-      row("tan θ", Math.abs(cs) < 0.02 ? "undefined" : num(sn / cs), "c-tan");
+      row("tan θ", tangentUndefined(S.theta) ? "undefined" : num(sn / cs), "c-tan");
   }
 }
 ];
@@ -838,7 +922,7 @@ const S = {
   step: 0, theta: 0, playing: false, tau: 0,
   A: 1, f: 0.25, phi: 0, scale: 3,
   shift: 0, shiftTarget: 0, target: null,
-  stepStart: 0, last: 0, drag: false
+  stepStart: 0, last: 0, drag: false, fitStart: null
 };
 
 function clampTheta(st, a) {
@@ -897,6 +981,7 @@ function init() {
     let h = "";
     if (c.includes("play")) h += `<button class="btn" id="playBtn">${playLabel()}</button>`;
     h += `<button class="btn" id="replayBtn">↺ Replay step</button>`;
+    if (c.includes("fit")) h += `<button class="btn primary" id="fitBtn">Show how they fit</button><button class="btn" id="fitReset" disabled>Reset</button><span class="fit-status" id="fitStatus" role="status">Choose an angle, then show how the squares fit.</span>`;
     if (c.includes("shift")) h += `<button class="btn" id="shiftBtn">Slide cosine a quarter turn →</button>`;
     if (c.includes("special")) h += [0, 30, 45, 60, 90].map(a => `<button class="btn" data-ang="${a}">${a}°</button>`).join("");
     const fmts = {
@@ -911,6 +996,24 @@ function init() {
     const pb = $("playBtn");
     if (pb) pb.addEventListener("click", togglePlay);
     $("replayBtn").addEventListener("click", () => go(S.step));
+    const fb = $("fitBtn"), fr = $("fitReset");
+    if (fb) {
+      fb.addEventListener("click", () => {
+        S.drag = false; S.target = null; S.fitStart = performance.now();
+        fb.textContent = "Replay fit"; fr.disabled = false;
+        svg.setAttribute("aria-disabled", "true"); svg.style.cursor = "default";
+        $("hint").textContent = "The angle is held fixed. Reset to drag the dot and try another angle.";
+        $("fitStatus").textContent = REDUCE ? "The pieces fill the square. Reset to change the angle." : "Watch each piece slide into place. The angle is held fixed.";
+      });
+      fr.addEventListener("click", () => {
+        S.fitStart = null; S.stepStart = performance.now() - (st.intro || 0);
+        fb.textContent = "Show how they fit"; fr.disabled = true;
+        svg.removeAttribute("aria-disabled"); svg.style.cursor = "grab";
+        $("hint").textContent = st.hint;
+        $("fitStatus").textContent = "Choose an angle, then show how the squares fit.";
+        fb.focus();
+      });
+    }
     const sb = $("shiftBtn");
     if (sb) sb.addEventListener("click", () => {
       S.shiftTarget = S.shiftTarget ? 0 : 1;
@@ -977,6 +1080,7 @@ function init() {
     i = Math.max(0, Math.min(STEPS.length - 1, i));
     const st = STEPS[i];
     S.step = i;
+    S.fitStart = null; S.drag = false; svg.removeAttribute("aria-disabled");
     S.theta = st.theta ?? 0.7;
     S.playing = !!st.spin && !REDUCE;
     S.target = null; S.shift = 0; S.shiftTarget = 0; S.tau = 0;
@@ -1016,7 +1120,7 @@ function init() {
   }
   svg.addEventListener("pointerdown", e => {
     const st = STEPS[S.step];
-    if (!st.center || e.button !== 0) return;
+    if (!st.center || e.button !== 0 || S.fitStart !== null) return;
     const q = toSvg(e), c = st.center;
     if (Math.hypot(q.x - c.x, q.y - c.y) > c.r * 1.7) return;
     S.drag = true;
@@ -1034,6 +1138,7 @@ function init() {
   svg.addEventListener("keydown", e => {
     const st = STEPS[S.step];
     if (!st.center || e.altKey || e.ctrlKey || e.metaKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    if (S.fitStart !== null) { e.preventDefault(); return; }
     const d = (e.key === "ArrowUp" ? 1 : -1) * (e.shiftKey ? 15 : 1) * PI / 180;
     pause();
     S.target = null;
@@ -1064,6 +1169,10 @@ function init() {
     const st = STEPS[S.step];
     const p = REDUCE || !st.intro ? 1 : Math.min(1, (now - S.stepStart) / st.intro);
     svg.innerHTML = st.draw(S, p, now);
+    if (S.fitStart !== null && (REDUCE || now - S.fitStart >= 6500)) {
+      const status = $("fitStatus"), done = "The pieces fill the square with no gaps or overlaps. Reset to change the angle.";
+      if (status && status.textContent !== done) status.textContent = done;
+    }
     syncAngle();
     if (st.readout) {
       const r = st.readout(S, p);
